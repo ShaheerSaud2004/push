@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Khafī",
+    "slug": "khafi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.khafi.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Khafī needs your location to find nearby Muslim-owned coffee shops and halal restaurants for personalized game categories.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Khafī needs your location to find nearby Muslim-owned coffee shops and halal restaurants for personalized game categories."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.khafi.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "khafi",
+    "plugins": [
+      "expo-asset"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "614e2abe-c981-4a35-80c7-c20c4c41ae6d"
+      }
+    }
+  }
+}

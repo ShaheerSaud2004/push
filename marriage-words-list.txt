@@ -1,0 +1,40 @@
+Marriage Category Words - Review List
+=====================================
+
+Please review and remove any words you don't want. Each word is on its own line.
+
+1. Nikah
+2. Wedding
+3. Mahr
+4. Dowry
+5. Wali
+6. Qadi
+7. Contract
+8. Ceremony
+9. Walima
+10. Reception
+11. Bride
+12. Groom
+13. Party
+14. Henna
+15. Engagement
+16. Proposal
+17. Husband
+18. Wife
+19. Spouse
+20. Vows
+21. Blessing
+22. Dua
+23. Khutbah
+24. Feast
+25. Celebration
+26. Alliance
+27. Union
+28. Wedlock
+
+Total: 28 words
+
+Instructions:
+- Delete lines you don't want
+- Save the file
+- Let me know when you're done and I'll update the category with your selections
