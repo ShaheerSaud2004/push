@@ -11,9 +11,9 @@ import { useTheme } from '../contexts/ThemeContext';
 
 type CardProps = {
   children: React.ReactNode;
-  onPress?: () => void;
+  onPress?: (() => void) | ((e: any) => void);
   onLongPress?: () => void;
-  style?: ViewStyle;
+  style?: ViewStyle | ViewStyle[];
   disabled?: boolean;
 };
 

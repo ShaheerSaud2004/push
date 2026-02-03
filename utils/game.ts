@@ -75,10 +75,10 @@ export const selectRandomWord = (words: string[], usedWords: string[] = []): str
   return availableWords[Math.floor(Math.random() * availableWords.length)];
 };
 
-export const selectRandomCategory = (categoryIds: string[], categories: Category[], isPremium: boolean = false): string => {
+export const selectRandomCategory = (categoryIds: string[], categories: Category[]): string => {
   const availableCategories = categoryIds.filter(id => {
     const cat = categories.find(c => c.id === id);
-    return cat && (!cat.locked || cat.isCustom || isPremium) && cat.words.length > 0;
+    return cat && (!cat.locked || cat.isCustom) && cat.words.length > 0;
   });
   
   if (availableCategories.length === 0) {
@@ -89,10 +89,10 @@ export const selectRandomCategory = (categoryIds: string[], categories: Category
 };
 
 // Select a random single category when none are selected
-export const selectSingleRandomCategory = (categories: Category[], isPremium: boolean = false): string => {
-  // Filter out locked categories (unless premium), and categories with no words
+export const selectSingleRandomCategory = (categories: Category[]): string => {
+  // Filter out locked categories, and categories with no words
   const availableCategories = categories.filter(c => 
-    (!c.locked || c.isCustom || isPremium) && c.words.length > 0
+    (!c.locked || c.isCustom) && c.words.length > 0
   );
   
   if (availableCategories.length === 0) {
@@ -116,4 +116,246 @@ export const generateHint = (word: string): string => {
   };
   
   return hints[word] || `Starts with "${word[0].toUpperCase()}"`;
+};
+
+// Select a random quiz question for quiz mode
+export const selectQuizQuestion = (
+  categoryId: string,
+  difficulty?: 'easy' | 'medium' | 'hard'
+): { question: string; answer: string } | null => {
+  const { getRandomQuizQuestion } = require('../data/quizQuestions');
+  const quizQ = getRandomQuizQuestion(categoryId, difficulty);
+  
+  if (!quizQ) {
+    return null;
+  }
+  
+  return {
+    question: quizQ.question,
+    answer: quizQ.answer,
+  };
+};
+
+// Determine the answer type with more granular subcategories
+const getAnswerType = (answer: string, categoryId: string): string => {
+  const answerLower = answer.toLowerCase();
+  
+  // Prophets (person names from prophets category)
+  const prophets = [
+    'muhammad', 'ibrahim', 'musa', 'isa', 'nuh', 'adam', 'yusuf', 'sulaiman', 'dawud', 'yunus',
+    'yahya', 'zakariyya', 'ishaq', 'ismail', 'ayyub', 'hud', 'salih', 'idris'
+  ];
+  
+  // Companions/Wives (person names from companions/seerah)
+  const companions = [
+    'abu bakr', 'umar', 'uthman', 'ali', 'khadija', 'aisha', 'fatima', 'bilal', 'hamza',
+    'zayd', 'umm aiman', 'zainab', 'hassan', 'hussein', 'anas', 'abdullah ibn abbas',
+    'abu hurairah', 'sahabah'
+  ];
+  
+  // Scholars/Imams
+  const scholars = [
+    'imam malik', 'imam shafi', 'imam hanbal', 'imam abu hanifa', 'imam bukhari', 'imam muslim',
+    'imam tirmidhi', 'al-nawawi', 'ibn qayyim'
+  ];
+  
+  // Locations (cities, places)
+  const locations = [
+    'makkah', 'madinah', 'madina', 'jerusalem', 'istanbul', 'baghdad', 'damascus', 'cairo',
+    'andalusia', 'saudi arabia', 'turkey', 'egypt', 'pakistan', 'indonesia', 'malaysia',
+    'morocco', 'algeria', 'tunisia', 'iraq', 'iran', 'afghanistan', 'bangladesh', 'uae',
+    'qatar', 'kuwait', 'oman', 'yemen'
+  ];
+  
+  // Battles (specific battle events)
+  const battles = [
+    'battle of badr', 'battle of uhud', 'battle of khandaq', 'battle of yarmouk'
+  ];
+  
+  // Events (historical events, journeys, treaties)
+  const events = [
+    'conquest of makkah', 'night journey', 'first revelation', 'treaty of hudaybiyyah', 'hijrah',
+    'fall of constantinople', 'crusades', 'mongol invasion', 'reconquista', 'siege of vienna',
+    'conquest of jerusalem', 'conquest of spain', 'abbasid revolution', 'umayyad caliphate',
+    'golden age of baghdad', 'al-andalus', 'moorish spain', 'age of discovery',
+    'building of al-azhar', 'first hijrah to abyssinia', 'ottoman empire rise',
+    'salahuddin ayyubi'
+  ];
+  
+  // Months/Holidays
+  const months = [
+    'ramadan', 'dhul hijjah', 'muharram', 'safar', 'rabi al-awwal', 'rabi al-thani',
+    'jumada al-awwal', 'jumada al-thani', 'rajab', 'shaaban', 'shawwal', 'dhul qidah',
+    'eid al-fitr', 'eid al-adha', 'laylatul qadr', 'mawlid', 'ashura'
+  ];
+  
+  // Objects/Physical things
+  const objects = [
+    'kaaba', 'black stone', 'zamzam water', 'prayer rug', 'quran stand', 'hijab', 'niqab',
+    'abaya', 'thobe', 'kufi', 'turban', 'scarf', 'blue mosque', 'dome of the rock',
+    'masjid nabawi', 'masjid al-aqsa', 'al-azhar', 'taj mahal', 'alhambra', 'topkapi'
+  ];
+  
+  // Check by category-specific matching first
+  if (categoryId === 'prophets') {
+    if (prophets.some(name => answerLower.includes(name) || name.includes(answerLower))) {
+      return 'prophet';
+    }
+  }
+  
+  if (categoryId === 'companions' || categoryId === 'seerah') {
+    if (companions.some(name => answerLower.includes(name) || name.includes(answerLower))) {
+      return 'companion';
+    }
+  }
+  
+  if (categoryId === 'islamic-scholars') {
+    if (scholars.some(name => answerLower.includes(name) || name.includes(answerLower))) {
+      return 'scholar';
+    }
+  }
+  
+  // Then check general types
+  if (battles.some(battle => answerLower.includes(battle) || battle.includes(answerLower))) {
+    return 'battle';
+  }
+  if (events.some(event => answerLower.includes(event) || event.includes(answerLower))) {
+    return 'event';
+  }
+  if (locations.some(loc => answerLower.includes(loc) || loc.includes(answerLower))) {
+    return 'location';
+  }
+  if (months.some(month => answerLower.includes(month) || month.includes(answerLower))) {
+    return 'month';
+  }
+  if (objects.some(obj => answerLower.includes(obj) || obj.includes(answerLower))) {
+    return 'object';
+  }
+  
+  // Default to concept/term for everything else
+  return 'concept';
+};
+
+// Analyze question structure to find similar questions
+const getQuestionStructure = (question: string): string => {
+  const qLower = question.toLowerCase();
+  
+  // Questions asking "who" or about a person's role/relationship
+  if (qLower.includes('who') || qLower.includes('wife') || qLower.includes('husband') || 
+      qLower.includes('daughter') || qLower.includes('son') || qLower.includes('caliph') ||
+      qLower.includes('companion') || qLower.includes('uncle') || qLower.includes('grandson')) {
+    return 'person-role';
+  }
+  
+  // Questions asking "where" or about location
+  if (qLower.includes('where') || qLower.includes('city') || qLower.includes('place')) {
+    return 'location';
+  }
+  
+  // Questions asking "when" or about time
+  if (qLower.includes('when') || qLower.includes('month') || qLower.includes('time')) {
+    return 'time';
+  }
+  
+  // Questions asking "what" about battles/events
+  if (qLower.includes('battle') || qLower.includes('conquest') || qLower.includes('treaty') ||
+      qLower.includes('journey') || qLower.includes('revelation') || qLower.includes('migration') ||
+      qLower.includes('hijrah')) {
+    return 'event';
+  }
+  
+  // Questions asking about characteristics/attributes of a person
+  if (qLower.includes('known for') || qLower.includes('prophet') && (qLower.includes('patience') ||
+      qLower.includes('wisdom') || qLower.includes('beautiful') || qLower.includes('built'))) {
+    return 'person-attribute';
+  }
+  
+  // Questions asking "what" about concepts/things
+  if (qLower.includes('what is') || qLower.includes('what') || qLower.includes('which')) {
+    return 'concept';
+  }
+  
+  return 'general';
+};
+
+// Select a different but similar quiz question for the imposter (same category, same answer type AND question structure)
+export const selectImposterQuizQuestion = (
+  categoryId: string,
+  excludeQuestionId: string,
+  difficulty?: 'easy' | 'medium' | 'hard',
+  normalAnswer?: string,
+  normalQuestion?: string
+): { question: string; answer: string } | null => {
+  const { getRandomQuizQuestion, quizQuestions } = require('../data/quizQuestions');
+  
+  // Find the excluded question to get its details
+  const excludedQ = quizQuestions.find((q: any) => q.id === excludeQuestionId);
+  if (!excludedQ) {
+    return null;
+  }
+  
+  const targetAnswer = normalAnswer || excludedQ.answer;
+  const targetQuestion = normalQuestion || excludedQ.question;
+  const targetAnswerType = getAnswerType(targetAnswer, categoryId);
+  const targetQuestionStructure = getQuestionStructure(targetQuestion);
+  
+  // First try: same category, same answer type, same question structure
+  let availableQuestions = quizQuestions.filter((q: any) => {
+    if (q.categoryId !== categoryId || q.id === excludeQuestionId) {
+      return false;
+    }
+    const qAnswerType = getAnswerType(q.answer, q.categoryId);
+    const qQuestionStructure = getQuestionStructure(q.question);
+    return qAnswerType === targetAnswerType && qQuestionStructure === targetQuestionStructure;
+  });
+  
+  if (difficulty) {
+    availableQuestions = availableQuestions.filter((q: any) => q.difficulty === difficulty);
+  }
+  
+  // Second try: same category, same answer type (relax structure requirement)
+  if (availableQuestions.length === 0) {
+    availableQuestions = quizQuestions.filter((q: any) => {
+      if (q.categoryId !== categoryId || q.id === excludeQuestionId) {
+        return false;
+      }
+      const qAnswerType = getAnswerType(q.answer, q.categoryId);
+      return qAnswerType === targetAnswerType;
+    });
+    
+    if (difficulty) {
+      availableQuestions = availableQuestions.filter((q: any) => q.difficulty === difficulty);
+    }
+  }
+  
+  // Third try: same category only (relax both requirements)
+  if (availableQuestions.length === 0) {
+    availableQuestions = quizQuestions.filter((q: any) => 
+      q.categoryId === categoryId && q.id !== excludeQuestionId
+    );
+    
+    if (difficulty) {
+      availableQuestions = availableQuestions.filter((q: any) => q.difficulty === difficulty);
+    }
+  }
+  
+  if (availableQuestions.length === 0) {
+    // Final fallback: get any question from the category
+    const fallback = getRandomQuizQuestion(categoryId, difficulty);
+    if (!fallback) {
+      return null;
+    }
+    return {
+      question: fallback.question,
+      answer: fallback.answer,
+    };
+  }
+  
+  const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+  const selected = availableQuestions[randomIndex];
+  
+  return {
+    question: selected.question,
+    answer: selected.answer,
+  };
 };

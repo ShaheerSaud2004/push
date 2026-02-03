@@ -1,0 +1,77 @@
+CATEGORIES AND WORDS LIST
+==========================
+
+1. PROPHETS (Easy)
+   - Muhammad, Ibrahim, Musa, Isa, Nuh, Adam, Yusuf, Sulaiman, Dawud, Yunus, Yahya, Zakariyya, Ishaq, Ismail, Ayyub, Hud, Salih, Idris
+
+2. SEERAH (Hard)
+   - Hijrah, Battle of Badr, Battle of Uhud, Conquest of Makkah, Night Journey, First Revelation, Treaty of Hudaybiyyah, Battle of Khandaq, Birth in Makkah, Migration to Madinah, Farewell Pilgrimage, Year of Sorrow, Pledge of Aqabah, Breaking of the Idols, Opening of Makkah, Return to Makkah, Call to Islam, Building the Masjid
+
+3. RAMADAN (Medium)
+   - Iftar, Suhoor, Taraweeh, Fasting, Quran, Charity, Prayer, Dates, Water, Laylatul Qadr, Eid, Ramadan, Moon, Fajr, Dhikr, Dua, Zakat, Sadaqah
+
+4. WORSHIP & PRAYER (Medium)
+   - Salah, Wudu, Adhan, Fajr, Dhuhr, Asr, Maghrib, Isha, Qibla, Prayer Rug, Imam, Jummah, Khutbah, Dua, Dhikr, Tasbih, Sajdah, Ruku
+
+5. HALAL FOODS (Easy)
+   - Halal, Dates, Olives, Honey, Lamb, Chicken, Fish, Rice, Bread, Yogurt, Milk, Fruits, Vegetables, Nuts, Water, Tea, Coffee, Zabiha
+
+6. MASJID LIFE (Medium)
+   - Mosque, Prayer Hall, Qibla, Prayer Rug, Quran Stand, Imam, Jummah, Khutbah, Adhan, Iqamah, Wudu, Ablution, Community, Classes, Masjid
+
+7. ISLAMIC VALUES (Easy)
+   - Kindness, Patience, Gratitude, Humility, Forgiveness, Honesty, Generosity, Modesty, Respect, Justice, Mercy, Compassion, Brotherhood, Sisterhood, Trust, Loyalty, Wisdom, Bravery
+
+8. BASIC ISLAMIC TERMS (Easy)
+   - Allah, Deen, Iman, Halal, Haram, Sunnah, Hadith, Quran, Muslim, Islam, Prophet, Mosque, Prayer, Fasting, Charity, Hajj, Umrah, Shahadah
+
+9. ISLAMIC HISTORY (Hard) [LOCKED]
+   - Conquest of Jerusalem, Battle of Yarmouk, Fall of Constantinople, Golden Age of Baghdad, Al-Andalus, Crusades, Building of Al-Azhar, First Hijrah to Abyssinia, Mongol Invasion, Reconquista, Ottoman Empire Rise, Salahuddin Ayyubi, Umayyad Caliphate, Abbasid Revolution, Conquest of Spain, Siege of Vienna, Moorish Spain, Age of Discovery
+
+10. MUSLIM COFFEE SHOPS (Medium) [Location-based, empty by default]
+    - (Populated dynamically from user's location)
+
+11. LOCAL HALAL SPOTS (Medium) [Location-based, empty by default]
+    - (Populated dynamically from user's location)
+
+12. ISLAMIC MONTHS & HOLIDAYS (Medium)
+    - Ramadan, Dhul Hijjah, Muharram, Safar, Rabi al-Awwal, Rabi al-Thani, Jumada al-Awwal, Jumada al-Thani, Rajab, Shaaban, Shawwal, Dhul Qidah, Eid al-Fitr, Eid al-Adha, Laylatul Qadr, Mawlid, Ashura, Hajj
+
+13. QURAN CONCEPTS (Medium)
+    - Surah Al-Fatiha, Surah Al-Baqarah, Surah Al-Ikhlas, Surah Yasin, Ayatul Kursi, Paradise, Hellfire, Jannah, Jahannam, Angels, Jinn, Day of Judgment, Resurrection, Qiyamah, Akhirah, Dunya, Tawheed, Shirk, Kufr
+
+14. FAMILY & RELATIONSHIPS (Easy)
+    - Father, Mother, Brother, Sister, Son, Daughter, Husband, Wife, Uncle, Aunt, Grandfather, Grandmother, Cousin, Family, Parents, Children, Marriage, Nikah
+
+15. MARRIAGE & NIKAH (Medium)
+    - Nikah, Wedding, Mahr, Dowry, Wali, Qadi, Contract, Ceremony, Walima, Reception, Bride, Groom, Party, Henna, Engagement, Proposal, Husband, Wife, Spouse, Vows, Blessing, Dua, Khutbah, Feast, Celebration, Alliance, Union, Wedlock
+
+16. CHARITY & ZAKAT (Medium)
+    - Zakat, Sadaqah, Charity, Giving, Orphans, Needy, Donation, Generosity, Sharing, Feeding, Community, Education, Medical, Relief, Helping
+
+17. HAJJ & UMRAH (Medium)
+    - Hajj, Umrah, Makkah, Madinah, Kaaba, Tawaf, Sai, Arafat, Muzdalifah, Mina, Jamarat, Ihram, Talbiyah, Black Stone, Zamzam Water, Mount Safa, Mount Marwah, Pilgrimage
+
+18. DAILY MUSLIM PRACTICES (Easy)
+    - Bismillah, Alhamdulillah, InshaAllah, MashaAllah, SubhanAllah, Dhikr, Dua, Tasbih, Wudu, Salah, Quran, Halal, Modesty, Respect, Charity, Patience, Gratitude
+
+19. ISLAMIC CLOTHING (Easy)
+    - Hijab, Niqab, Abaya, Thobe, Kufi, Taqiyah, Modest, Covering, Jilbab, Khimar, Turban, Scarf, Cap, Modesty
+
+20. COMPANIONS OF PROPHET (Hard)
+    - Abu Bakr, Umar, Uthman, Ali, Khadija, Aisha, Fatima, Bilal, Hamza, Zayd, Umm Aiman, Zainab, Hassan, Hussein, Anas, Abdullah ibn Abbas, Abu Hurairah, Sahabah
+
+21. ISLAMIC ARCHITECTURE & PLACES (Hard)
+    - Kaaba, Masjid Nabawi, Masjid Al-Aqsa, Dome of the Rock, Al-Azhar, Cordoba Mosque, Blue Mosque, Medina, Makkah, Jerusalem, Istanbul, Baghdad, Damascus, Cairo, Andalusia, Taj Mahal, Alhambra, Topkapi
+
+22. ISLAMIC SCHOLARS & IMAMS (Hard)
+    - Imam Malik, Imam Shafi, Imam Hanbal, Imam Abu Hanifa, Imam Bukhari, Imam Muslim, Imam Tirmidhi, Ibn Sina, Al-Ghazali, Ibn Rushd, Ibn Taymiyyah, Ibn Kathir, Al-Tabari, Ibn Hajar, Al-Nawawi, Ibn Qayyim, Al-Shafi, Malik ibn Anas
+
+23. DUAS & SUPPLICATIONS (Medium)
+    - Travel, Eating, Sleeping, Waking, Leaving, Entering, Rain, Protection, Forgiveness, Guidance, Patience, Health, Success, Parents, Children, Marriage, Deceased, Relief
+
+24. ISLAMIC ETIQUETTE (ADAB) (Easy)
+    - Greeting, Visiting, Eating, Speaking, Dressing, Entering, Leaving, Sneezing, Yawning, Bathroom, Cleanliness, Respect, Kindness, Hospitality, Modesty, Humility, Patience, Gratitude
+
+25. ISLAMIC COUNTRIES & CITIES (Easy)
+    - Saudi Arabia, Turkey, Egypt, Pakistan, Indonesia, Malaysia, Morocco, Algeria, Tunisia, Iraq, Iran, Afghanistan, Bangladesh, UAE, Qatar, Kuwait, Oman, Yemen

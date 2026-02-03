@@ -3,8 +3,9 @@
     "name": "Khafī",
     "slug": "khafi",
     "version": "1.0.0",
+    "newArchEnabled": true,
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./appicon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
@@ -17,29 +18,36 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.khafi.app",
-      "buildNumber": "1",
+      "buildNumber": "4",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Khafī needs your location to find nearby Muslim-owned coffee shops and halal restaurants for personalized game categories.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Khafī needs your location to find nearby Muslim-owned coffee shops and halal restaurants for personalized game categories."
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./appicon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.khafi.app",
-      "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-      ]
+      "package": "com.khafi.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "Khafī - The Islamic Hidden Word Game",
+      "shortName": "Khafī",
+      "lang": "en",
+      "scope": "/",
+      "themeColor": "#8B4513",
+      "backgroundColor": "#F5E6D3",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/",
+      "bundler": "metro",
+      "description": "A fun party game for Muslims! Play the classic hidden word game with Islamic categories and find the imposter among your friends."
     },
     "scheme": "khafi",
     "plugins": [
-      "expo-asset"
+      "expo-asset",
+      "./plugins/with-game-center.js"
     ],
     "extra": {
       "eas": {

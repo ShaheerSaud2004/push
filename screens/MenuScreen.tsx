@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,10 +14,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { RootStackParamList } from '../App';
 import { Button } from '../components/Button';
+import { Logo } from '../components/Logo';
 import { useTheme } from '../contexts/ThemeContext';
 import { PatternBackground } from '../components/PatternBackground';
 import { typography, spacing } from '../theme';
 import * as Haptics from 'expo-haptics';
+import { getMaxContentWidth, getResponsivePadding } from '../utils/responsive';
 
 type MenuScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Menu'>;
 
@@ -25,6 +27,8 @@ export default function MenuScreen() {
   const navigation = useNavigation<MenuScreenNavigationProp>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const maxWidth = getMaxContentWidth();
+  const responsivePadding = getResponsivePadding();
   
   const titleScale = useSharedValue(0.9);
   const titleOpacity = useSharedValue(0);
@@ -82,35 +86,27 @@ export default function MenuScreen() {
           ]}
         >
           <View style={[styles.settingsIconContainer, { backgroundColor: colors.border }]}>
-            <Text style={[styles.settingsIcon, { color: colors.textSecondary }]}>
-              ⚙
-            </Text>
+            <Image
+              source={require('../settings.png')}
+              style={[styles.settingsIcon, { tintColor: colors.textSecondary }]}
+              resizeMode="contain"
+            />
           </View>
         </Pressable>
       </View>
 
-      <View style={styles.content}>
-        <Animated.View style={titleAnimatedStyle}>
-          <View style={styles.titleContainer}>
-            <View style={[styles.titleAccent, { backgroundColor: colors.accentLight }]} />
-            <Text style={[styles.title, { color: colors.text }]}>Khafī</Text>
-          </View>
-        </Animated.View>
-        
-        <Animated.View style={subtitleAnimatedStyle}>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            خفي
-          </Text>
-        </Animated.View>
-        
-        <Animated.View style={taglineAnimatedStyle}>
-          <View style={[styles.taglineContainer, { borderTopColor: colors.border }]}>
-            <Text
-              style={[styles.tagline, { color: colors.textSecondary }]}
-            >
-              The Islamic Hidden Word Game
-            </Text>
-          </View>
+      <View style={[styles.content, { maxWidth, paddingHorizontal: responsivePadding.horizontal }]}>
+        <Animated.View style={[titleAnimatedStyle, styles.logoContainer]}>
+          <Logo width={400} height={400} style={styles.logo} />
+          <Animated.View style={[taglineAnimatedStyle, styles.taglineOverlay]}>
+            <View style={[styles.taglineContainer, { borderTopColor: colors.border }]}>
+              <Text
+                style={[styles.tagline, { color: colors.textSecondary }]}
+              >
+                The Islamic Hidden Word Game
+              </Text>
+            </View>
+          </Animated.View>
         </Animated.View>
 
         <Animated.View
@@ -161,33 +157,33 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   settingsIcon: {
-    fontSize: 18,
-    fontWeight: '300',
+    width: 20,
+    height: 20,
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
+    width: '100%',
+    alignSelf: 'center',
   },
-  titleContainer: {
-    flexDirection: 'row',
+  logoContainer: {
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
   },
-  titleAccent: {
-    width: 4,
-    height: 48,
-    borderRadius: 2,
-    marginRight: spacing.sm,
-    opacity: 0.6,
+  logo: {
+    width: 360,
+    height: 360,
+    marginBottom: 0,
   },
-  title: {
-    ...typography.title,
-    fontSize: 56,
-    letterSpacing: -1.5,
-    fontWeight: '700',
+  taglineOverlay: {
+    position: 'absolute',
+    bottom: spacing.xl,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   subtitle: {
     ...typography.heading,
@@ -197,8 +193,9 @@ const styles = StyleSheet.create({
   },
   taglineContainer: {
     borderTopWidth: 1,
-    paddingTop: spacing.lg,
-    marginBottom: spacing.xxl,
+    paddingTop: spacing.xs / 4,
+    marginTop: 0,
+    marginBottom: 0,
     width: '100%',
     maxWidth: 280,
     alignItems: 'center',

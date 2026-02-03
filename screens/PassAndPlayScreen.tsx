@@ -25,12 +25,13 @@ import Animated, {
 import { RootStackParamList } from '../App';
 import { Button } from '../components/Button';
 import { PlayingCard } from '../components/PlayingCard';
+import { NameLogo } from '../components/NameLogo';
 import { useTheme } from '../contexts/ThemeContext';
 import { useGame } from '../contexts/GameContext';
 import { PatternBackground } from '../components/PatternBackground';
 import { typography, spacing } from '../theme';
 import * as Haptics from 'expo-haptics';
-import { getCategoryName, getAllWords } from '../utils/game';
+import { getCategoryName } from '../utils/game';
 import { defaultCategories } from '../data/categories';
 import { getCustomCategories } from '../utils/storage';
 import { getEnglishTranslation } from '../utils/translations';
@@ -262,17 +263,28 @@ export default function PassAndPlayScreen() {
     const categoryName = getCategoryName(settings.secretCategory, allCategories);
     // Show category for all players, except imposters when blind imposter mode is enabled
     const shouldShowCategory = !(player.role === 'imposter' && settings.specialModes.blindImposter);
+    const isQuizMode = settings.mode === 'quiz' && settings.quizQuestion;
     
     if (player.role === 'imposter') {
       return (
         <>
+          {isQuizMode && (
+            <View style={[styles.quizQuestionCard, { backgroundColor: colors.accentLight + '30', borderColor: colors.accent }]}>
+              <Text style={[styles.quizQuestionLabel, { color: colors.textSecondary }]}>
+                Question:
+              </Text>
+              <Text style={[styles.quizQuestionText, { color: colors.accent }]}>
+                {settings.quizQuestion}
+              </Text>
+            </View>
+          )}
           {shouldShowCategory && (
             <Text style={[styles.categoryLabel, { color: colors.textSecondary }]}>
               Category: {categoryName}
             </Text>
           )}
           <Text style={[styles.wordPrefix, { color: colors.textSecondary }]}>
-            The word is...
+            {isQuizMode ? 'The answer is...' : 'The word is...'}
           </Text>
           <Text style={[styles.roleLabel, { color: colors.imposter }]}>
             IMPOSTER
@@ -281,7 +293,14 @@ export default function PassAndPlayScreen() {
             <Text
               style={[styles.instructionText, { color: colors.textSecondary }]}
             >
-              You do not know the word
+              {isQuizMode ? 'You do not know the answer' : 'You do not know the word'}
+            </Text>
+          )}
+          {isQuizMode && !settings.specialModes.blindImposter && (
+            <Text
+              style={[styles.instructionText, { color: colors.textSecondary }]}
+            >
+              You do not know the answer to the question
             </Text>
           )}
         </>
@@ -291,6 +310,16 @@ export default function PassAndPlayScreen() {
     if (player.role === 'doubleAgent') {
       return (
         <>
+          {isQuizMode && settings.quizQuestion && (
+            <View style={[styles.quizQuestionCard, { backgroundColor: colors.accentLight + '30', borderColor: colors.accent }]}>
+              <Text style={[styles.quizQuestionLabel, { color: colors.textSecondary }]}>
+                Question:
+              </Text>
+              <Text style={[styles.quizQuestionText, { color: colors.accent }]}>
+                {settings.quizQuestion}
+              </Text>
+            </View>
+          )}
           {shouldShowCategory && (
             <Text style={[styles.categoryLabel, { color: colors.textSecondary }]}>
               Category: {categoryName}
@@ -300,9 +329,14 @@ export default function PassAndPlayScreen() {
             DOUBLE AGENT
           </Text>
           <Text style={[styles.wordPrefix, { color: colors.textSecondary }]}>
-            The word is...
+            {isQuizMode ? 'The answer is...' : 'The word is...'}
           </Text>
-          <Text style={[styles.wordText, { color: colors.text }]}>
+          <Text 
+            style={[styles.wordText, { color: colors.text }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit={true}
+            minimumFontScale={0.5}
+          >
             {settings.secretWord}
           </Text>
           {getEnglishTranslation(settings.secretWord) && (
@@ -315,7 +349,7 @@ export default function PassAndPlayScreen() {
           <Text
             style={[styles.instructionText, { color: colors.textSecondary }]}
           >
-            You know the word but are NOT the imposter
+            You know the {isQuizMode ? 'answer' : 'word'} but are NOT the imposter
           </Text>
         </>
       );
@@ -323,15 +357,30 @@ export default function PassAndPlayScreen() {
 
     return (
       <>
+        {isQuizMode && settings.quizQuestion && (
+          <View style={[styles.quizQuestionCard, { backgroundColor: colors.accentLight + '30', borderColor: colors.accent }]}>
+            <Text style={[styles.quizQuestionLabel, { color: colors.textSecondary }]}>
+              Question:
+            </Text>
+            <Text style={[styles.quizQuestionText, { color: colors.accent }]}>
+              {settings.quizQuestion}
+            </Text>
+          </View>
+        )}
         {shouldShowCategory && (
           <Text style={[styles.categoryLabel, { color: colors.textSecondary }]}>
             Category: {categoryName}
           </Text>
         )}
         <Text style={[styles.wordPrefix, { color: colors.textSecondary }]}>
-          The word is...
+          {isQuizMode ? 'The answer is...' : 'The word is...'}
         </Text>
-        <Text style={[styles.wordText, { color: colors.text }]}>
+        <Text 
+          style={[styles.wordText, { color: colors.text }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.5}
+        >
           {settings.secretWord}
         </Text>
         {getEnglishTranslation(settings.secretWord) && (
@@ -395,7 +444,7 @@ export default function PassAndPlayScreen() {
               style={styles.buttonContainer}
             >
               <Button
-                title="Continue to Round"
+                title={remainingCount === 0 ? "Continue to Round Start!" : "Continue to Round"}
                 onPress={handleContinue}
                 style={styles.button}
               />
@@ -416,17 +465,6 @@ export default function PassAndPlayScreen() {
         <PatternBackground />
 
         <View style={styles.content}>
-          <Animated.View
-            entering={FadeIn.delay(100).springify()}
-            style={styles.playerHeader}
-          >
-            <Text
-              style={[styles.playerTitle, { color: colors.text }]}
-            >
-              {selectedPlayer.name}
-            </Text>
-          </Animated.View>
-
           <View style={styles.cardContainer}>
             <Pressable
               onPress={handleRevealTap}
@@ -436,14 +474,33 @@ export default function PassAndPlayScreen() {
                 pressed && !revealed && !selectedPlayer.hasSeenCard && styles.cardPressed,
               ]}
             >
-              <PlayingCard
-                isRevealed={revealed}
-                disabled={selectedPlayer.hasSeenCard}
-              >
-                <View style={styles.cardContent}>
-                  {getCardContent(selectedPlayer)}
-                </View>
-              </PlayingCard>
+              <View style={styles.cardWithName}>
+                <PlayingCard
+                  isRevealed={revealed}
+                  disabled={selectedPlayer.hasSeenCard}
+                  playerName={selectedPlayer.name}
+                >
+                  <View style={styles.cardContent}>
+                    <Animated.View
+                      entering={FadeIn.delay(50).springify()}
+                      style={styles.logoContainer}
+                    >
+                      <NameLogo width={120} height={120} />
+                    </Animated.View>
+                    <Animated.View
+                      entering={FadeIn.delay(100).springify()}
+                      style={styles.playerNameOnCard}
+                    >
+                      <Text
+                        style={[styles.playerNameOnCardText, { color: colors.text }]}
+                      >
+                        {selectedPlayer.name}
+                      </Text>
+                    </Animated.View>
+                    {getCardContent(selectedPlayer)}
+                  </View>
+                </PlayingCard>
+              </View>
             </Pressable>
             
             {!revealed && !selectedPlayer.hasSeenCard && (
@@ -485,6 +542,12 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: spacing.lg,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+    marginBottom: 0,
   },
   header: {
     alignItems: 'center',
@@ -638,6 +701,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     zIndex: 1,
     position: 'relative',
+    fontFamily: 'Etna Sans Serif',
   },
   seenLabel: {
     ...typography.caption,
@@ -676,14 +740,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  cardWithName: {
+    width: '100%',
+    position: 'relative',
+  },
+  playerNameOnCard: {
+    width: '100%',
+    marginTop: spacing.xs / 2,
+    marginBottom: spacing.md,
+    paddingTop: spacing.xs / 4,
+    paddingBottom: spacing.xs / 2,
+    borderBottomWidth: 1,
+    alignItems: 'center',
+    borderBottomColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  playerNameOnCardText: {
+    ...typography.heading,
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    fontFamily: 'Etna Sans Serif',
+  },
   cardPressed: {
     transform: [{ scale: 0.98 }],
   },
   cardContent: {
     width: '100%',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    padding: spacing.md,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.lg,
   },
   tapHint: {
     marginTop: spacing.xl,
@@ -700,52 +787,92 @@ const styles = StyleSheet.create({
   },
   roleLabel: {
     ...typography.heading,
-    fontSize: 32,
+    fontSize: 36,
     textAlign: 'center',
-    marginBottom: spacing.md,
+    marginVertical: spacing.lg,
     fontWeight: '700',
+    letterSpacing: 3,
+    textTransform: 'uppercase',
   },
   categoryLabel: {
     ...typography.caption,
-    fontSize: 13, // Slightly larger for better readability
+    fontSize: 14,
     textAlign: 'center',
-    marginBottom: spacing.md,
-    opacity: 0.8, // Slightly more visible
+    marginBottom: spacing.sm,
+    opacity: 0.85,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
     fontWeight: '600',
-    lineHeight: 18,
+    lineHeight: 20,
   },
   wordPrefix: {
     ...typography.body,
-    fontSize: 18,
+    fontSize: 16,
     textAlign: 'center',
-    marginBottom: spacing.lg, // Increased spacing for better hierarchy
-    fontWeight: '600', // Slightly bolder
-    letterSpacing: 0.5,
-    lineHeight: 24,
+    marginBottom: spacing.md,
+    opacity: 0.75,
+    fontStyle: 'italic',
+    fontWeight: '500',
+    letterSpacing: 0.3,
+    lineHeight: 22,
   },
   wordText: {
     ...typography.heading,
-    fontSize: 48,
+    fontSize: 56,
     textAlign: 'center',
     fontWeight: '700',
+    letterSpacing: 2,
+    lineHeight: 64,
+    marginVertical: spacing.md,
   },
   wordTranslation: {
     ...typography.caption,
-    fontSize: 15, // Slightly larger for better readability
+    fontSize: 15,
     textAlign: 'center',
-    marginTop: spacing.sm, // Increased spacing
+    marginTop: spacing.sm,
+    opacity: 0.75,
     fontStyle: 'italic',
+    fontWeight: '500',
     lineHeight: 20,
+    paddingHorizontal: spacing.md,
   },
   categoryText: {
     ...typography.body,
     textAlign: 'center',
     marginBottom: spacing.md,
   },
+  quizQuestionCard: {
+    padding: spacing.md,
+    borderRadius: 12,
+    borderWidth: 2,
+    marginBottom: spacing.lg,
+    width: '100%',
+  },
+  quizQuestionLabel: {
+    ...typography.caption,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  quizQuestionText: {
+    ...typography.bodyBold,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 22,
+    textAlign: 'center',
+  },
   instructionText: {
     ...typography.body,
+    fontSize: 14,
     textAlign: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
+    opacity: 0.8,
+    lineHeight: 20,
+    paddingHorizontal: spacing.lg,
+    fontWeight: '500',
   },
   hideContainer: {
     alignItems: 'center',

@@ -5,9 +5,8 @@ const STORAGE_KEYS = {
   SETTINGS: '@khafi:settings',
   UNLOCKED_CATEGORIES: '@khafi:unlocked',
   CUSTOM_CATEGORIES: '@khafi:custom',
-  LOCATION_CATEGORIES: '@khafi:location_categories',
   USED_WORDS: '@khafi:used_words',
-  PREMIUM: '@khafi:premium',
+  GAME_RESULTS: '@khafi:game_results',
 };
 
 export const saveSettings = async (settings: Partial<AppSettings>): Promise<void> => {
@@ -94,27 +93,6 @@ export const getUnlockedCategories = async (): Promise<string[]> => {
   return [];
 };
 
-// Location-based category storage
-export const saveLocationCategories = async (categories: { coffee?: Category; halal?: Category }): Promise<void> => {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEYS.LOCATION_CATEGORIES, JSON.stringify(categories));
-  } catch (error) {
-    console.error('Error saving location categories:', error);
-  }
-};
-
-export const getLocationCategories = async (): Promise<{ coffee?: Category; halal?: Category }> => {
-  try {
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.LOCATION_CATEGORIES);
-    if (data) {
-      return JSON.parse(data);
-    }
-  } catch (error) {
-    console.error('Error loading location categories:', error);
-  }
-  return {};
-};
-
 // Track used words to prevent repetition
 export const addUsedWord = async (word: string): Promise<void> => {
   try {
@@ -148,23 +126,43 @@ export const clearUsedWords = async (): Promise<void> => {
   }
 };
 
-// Premium/Paywall tracking
-export const setIsPremium = async (isPremium: boolean): Promise<void> => {
+// Game results tracking
+export interface GameResult {
+  word: string;
+  category: string;
+  wasCorrect: boolean;
+  timestamp: number;
+  numPlayers: number;
+  numImposters: number;
+  mode: 'word' | 'question' | 'quiz';
+}
+
+export const saveGameResult = async (result: GameResult): Promise<void> => {
   try {
-    await AsyncStorage.setItem(STORAGE_KEYS.PREMIUM, JSON.stringify(isPremium));
+    const results = await getGameResults();
+    results.push(result);
+    await AsyncStorage.setItem(STORAGE_KEYS.GAME_RESULTS, JSON.stringify(results));
   } catch (error) {
-    console.error('Error saving premium status:', error);
+    console.error('Error saving game result:', error);
   }
 };
 
-export const getIsPremium = async (): Promise<boolean> => {
+export const getGameResults = async (): Promise<GameResult[]> => {
   try {
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.PREMIUM);
+    const data = await AsyncStorage.getItem(STORAGE_KEYS.GAME_RESULTS);
     if (data) {
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('Error loading premium status:', error);
+    console.error('Error loading game results:', error);
   }
-  return false;
+  return [];
+};
+
+export const clearGameResults = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEYS.GAME_RESULTS);
+  } catch (error) {
+    console.error('Error clearing game results:', error);
+  }
 };

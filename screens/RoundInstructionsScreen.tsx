@@ -1,8 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { 
+  FadeInDown, 
+  FadeIn,
+} from 'react-native-reanimated';
 import { RootStackParamList } from '../App';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -10,6 +14,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useGame } from '../contexts/GameContext';
 import { PatternBackground } from '../components/PatternBackground';
 import { typography, spacing } from '../theme';
+import * as Haptics from 'expo-haptics';
 
 type RoundInstructionsScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -20,10 +25,20 @@ export default function RoundInstructionsScreen() {
   const navigation = useNavigation<RoundInstructionsScreenNavigationProp>();
   const { colors } = useTheme();
   const { players, settings } = useGame();
-
+  
   if (!settings || players.length === 0) {
     return null;
   }
+
+  const handleContinue = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    // For quiz mode, navigate to answer screen; otherwise go to reveal
+    if (settings.mode === 'quiz') {
+      navigation.navigate('QuizAnswer');
+    } else {
+      navigation.navigate('Reveal');
+    }
+  };
 
   const startingPlayer = players.find(p => p.id === settings.startingPlayerId) || players[0];
   
@@ -37,68 +52,141 @@ export default function RoundInstructionsScreen() {
       edges={['top', 'bottom']}
     >
       <PatternBackground />
-
-      <View style={styles.content}>
-        <Card style={styles.card}>
-          <Text style={[styles.heading, { color: colors.text }]}>
-            Round Instructions
-          </Text>
-
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Starting Player
-            </Text>
-            <Text
-              style={[styles.playerName, { color: colors.accent }]}
-            >
-              {startingPlayer.name}
+      
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Animated.View 
+          entering={FadeInDown.delay(0).springify()}
+        >
+          <View style={styles.header}>
+            <Text style={[styles.heading, { color: colors.text }]}>
+              Round Instructions
             </Text>
           </View>
 
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Direction
-            </Text>
-            <Text
-              style={[styles.instruction, { color: colors.textSecondary }]}
-            >
-              Proceed clockwise around the group
-            </Text>
-          </View>
+          <Card style={[
+            styles.card,
+            {
+              backgroundColor: colors.cardBackground,
+              borderColor: colors.border,
+              shadowColor: colors.shadow,
+            },
+          ]}>
+            {/* Starting Player Section - Highlighted */}
+            <Animated.View entering={FadeInDown.delay(100).springify()}>
+              <View style={[styles.startingPlayerSection, { backgroundColor: colors.accentLight, borderColor: colors.accent }]}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.accent }]}>
+                  <Image 
+                    source={require('../users.png')} 
+                    style={[styles.iconImage, { tintColor: colors.text }]}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={styles.startingPlayerContent}>
+                  <Text style={[styles.startingPlayerLabel, { color: colors.textSecondary }]}>
+                    Starting Player
+                  </Text>
+                  <Text style={[styles.playerName, { color: colors.accent }]}>
+                    {startingPlayer.name}
+                  </Text>
+                </View>
+              </View>
+            </Animated.View>
 
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {settings.mode === 'word' ? 'Clue Round' : 'Question'}
-            </Text>
-            <Text
-              style={[styles.instruction, { color: colors.textSecondary }]}
-            >
-              {settings.mode === 'word'
-                ? 'Each player gives ONE clue word related to the secret word. Try not to reveal it!'
-                : 'Players ask and answer questions about the secret word. Keep it hidden from the imposter!'}
-            </Text>
-          </View>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Voting
-            </Text>
-            <Text
-              style={[styles.instruction, { color: colors.textSecondary }]}
-            >
-              After all clues/questions, discuss and vote IN PERSON. The app will reveal the results when you're ready.
-            </Text>
-          </View>
+            {/* Direction Section */}
+            <Animated.View entering={FadeInDown.delay(200).springify()}>
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <View style={[styles.sectionIcon, { backgroundColor: colors.accentLight }]}>
+                    <Image 
+                      source={require('../users.png')} 
+                      style={[styles.sectionIconImage, { tintColor: colors.accent }]}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Direction
+                  </Text>
+                </View>
+                <Text style={[styles.instruction, { color: colors.textSecondary }]}>
+                  Proceed clockwise around the group
+                </Text>
+              </View>
+            </Animated.View>
 
-          <View style={styles.buttonContainer}>
-            <Button
-              title="Reveal When Ready"
-              onPress={() => navigation.navigate('Reveal')}
-              style={styles.button}
-            />
-          </View>
-        </Card>
-      </View>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+            {/* Game Mode Section */}
+            <Animated.View entering={FadeInDown.delay(300).springify()}>
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <View style={[styles.sectionIcon, { backgroundColor: colors.accentLight }]}>
+                    <Image 
+                      source={require('../brain.png')} 
+                      style={[styles.sectionIconImage, { tintColor: colors.accent }]}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    {settings.mode === 'word' ? 'Clue Round' : 'Quiz/Questions Mode'}
+                  </Text>
+                </View>
+                {settings.mode === 'quiz' && settings.quizQuestion ? (
+                  <>
+                    <Text style={[styles.instruction, { color: colors.textSecondary }]}>
+                      Each player will answer a question. Normal players get the same question, but the imposter gets a different (but similar) question. After everyone answers, you'll see all the answers before revealing who the imposter is.
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={[styles.instruction, { color: colors.textSecondary }]}>
+                    Each player gives ONE clue word related to the secret word. Try not to reveal it!
+                  </Text>
+                )}
+              </View>
+            </Animated.View>
+
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+            {/* Voting Section */}
+            <Animated.View entering={FadeInDown.delay(400).springify()}>
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <View style={[styles.sectionIcon, { backgroundColor: colors.accentLight }]}>
+                    <Image 
+                      source={require('../drama.png')} 
+                      style={[styles.sectionIconImage, { tintColor: colors.accent }]}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Voting
+                  </Text>
+                </View>
+                <Text style={[styles.instruction, { color: colors.textSecondary }]}>
+                  After all clues/questions, discuss and vote IN PERSON. The app will reveal the results when you're ready.
+                </Text>
+              </View>
+            </Animated.View>
+          </Card>
+
+          <Animated.View entering={FadeIn.delay(500)} style={styles.buttonContainer}>
+            <View style={styles.buttonWrapper}>
+              <Button
+                title={settings.mode === 'quiz' ? "Start Answering Questions →" : "Reveal When Ready ✨"}
+                onPress={handleContinue}
+                style={styles.button}
+                textStyle={styles.buttonText}
+              />
+            </View>
+          </Animated.View>
+        </Animated.View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -107,44 +195,168 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  scrollView: {
     flex: 1,
-    padding: spacing.lg,
-    justifyContent: 'center',
   },
-  card: {
-    padding: spacing.xl,
+  scrollContent: {
+    padding: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+  },
+  header: {
+    marginBottom: spacing.lg,
+    alignItems: 'center',
+    paddingTop: spacing.sm,
   },
   heading: {
     ...typography.heading,
-    fontSize: 26, // Consistent with other screens
-    marginBottom: spacing.xl,
+    fontSize: 26,
     textAlign: 'center',
-    fontWeight: '600', // Ensure consistent weight
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  section: {
+  card: {
+    padding: spacing.lg,
+    borderRadius: 20,
+    borderWidth: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
     marginBottom: spacing.lg,
   },
-  sectionTitle: {
-    ...typography.bodyBold,
-    fontSize: 17, // Slightly larger for better hierarchy
-    marginBottom: spacing.md, // Increased spacing
-    fontWeight: '600', // Ensure consistent weight
+  startingPlayerSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: 16,
+    borderWidth: 2,
+    marginBottom: spacing.md,
+    gap: spacing.md,
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconText: {
+    fontSize: 28,
+  },
+  iconImage: {
+    width: 24,
+    height: 24,
+  },
+  startingPlayerContent: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  startingPlayerLabel: {
+    ...typography.caption,
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 4,
+    fontWeight: '700',
+    opacity: 0.8,
   },
   playerName: {
     ...typography.heading,
-    fontSize: 28,
+    fontSize: 22,
+    fontWeight: '800',
     textAlign: 'center',
+    letterSpacing: 0.3,
+    fontFamily: 'Etna Sans Serif',
+  },
+  divider: {
+    height: 1,
+    marginVertical: spacing.md,
+    opacity: 0.25,
+  },
+  section: {
+    marginBottom: spacing.sm,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+  },
+  sectionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sectionIconText: {
+    fontSize: 16,
+  },
+  sectionIconImage: {
+    width: 20,
+    height: 20,
+  },
+  sectionTitle: {
+    ...typography.bodyBold,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   instruction: {
     ...typography.body,
-    fontSize: 15, // Slightly larger for better readability
-    lineHeight: 24,
+    fontSize: 14,
+    lineHeight: 20,
+    marginLeft: spacing.lg + 4,
+    marginTop: spacing.xs,
   },
   buttonContainer: {
     marginTop: spacing.lg,
+    marginBottom: spacing.lg,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  buttonWrapper: {
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
   },
   button: {
     width: '100%',
+    minHeight: 56,
+    paddingVertical: spacing.md,
+    borderRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  buttonText: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  quizQuestionBox: {
+    padding: spacing.md,
+    borderRadius: 12,
+    borderWidth: 2,
+    marginBottom: spacing.sm,
+    marginLeft: spacing.lg + 4,
+  },
+  quizQuestionLabel: {
+    ...typography.caption,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing.xs,
+  },
+  quizQuestion: {
+    ...typography.bodyBold,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 22,
   },
 });

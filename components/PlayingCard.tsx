@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme } from '../contexts/ThemeContext';
 import { typography, spacing } from '../theme';
+import { NameLogo } from './NameLogo';
 
 type PlayingCardProps = {
   children: React.ReactNode;
@@ -18,6 +19,7 @@ type PlayingCardProps = {
   isRevealed: boolean;
   disabled?: boolean;
   style?: ViewStyle;
+  playerName?: string; // Name to show on card back
 };
 
 export const PlayingCard: React.FC<PlayingCardProps> = ({
@@ -27,6 +29,7 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
   isRevealed,
   disabled = false,
   style,
+  playerName,
 }) => {
   const { colors, theme } = useTheme();
   const flipRotation = useSharedValue(0);
@@ -104,11 +107,9 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
     
     return (
       <View style={styles.patternContainer}>
-        {/* Central watermark - Arabic text */}
+        {/* Central watermark - Name Logo */}
         <View style={styles.patternTextContainer}>
-          <Text style={[styles.patternText, { color: patternColor, opacity: textOpacity }]}>
-            خفي
-          </Text>
+          <NameLogo width={200} height={200} />
         </View>
         
         {/* Large semi-transparent circular overlay on Arabic text */}
@@ -116,24 +117,6 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
           backgroundColor: patternColor, 
           opacity: circleOpacity,
         }]} />
-        
-        {/* Islamic Geometric Pattern - 8-pointed star in center */}
-        <View style={[styles.starContainer, { top: '50%', left: '50%' }]}>
-          <View style={[styles.starLine, styles.starLine1, { backgroundColor: patternColor, opacity: patternOpacity * 0.8 }]} />
-          <View style={[styles.starLine, styles.starLine2, { backgroundColor: patternColor, opacity: patternOpacity * 0.8 }]} />
-          <View style={[styles.starLine, styles.starLine3, { backgroundColor: patternColor, opacity: patternOpacity * 0.8 }]} />
-          <View style={[styles.starLine, styles.starLine4, { backgroundColor: patternColor, opacity: patternOpacity * 0.8 }]} />
-          <View style={[styles.starLine, styles.starLine5, { backgroundColor: patternColor, opacity: patternOpacity * 0.8 }]} />
-          <View style={[styles.starLine, styles.starLine6, { backgroundColor: patternColor, opacity: patternOpacity * 0.8 }]} />
-          <View style={[styles.starLine, styles.starLine7, { backgroundColor: patternColor, opacity: patternOpacity * 0.8 }]} />
-          <View style={[styles.starLine, styles.starLine8, { backgroundColor: patternColor, opacity: patternOpacity * 0.8 }]} />
-        </View>
-        
-        {/* Central decorative circle */}
-        <View style={[styles.centralCircle, { top: '50%', left: '50%', borderColor: patternColor, opacity: patternOpacity * 0.9 }]} />
-        
-        {/* Secondary circle layer */}
-        <View style={[styles.secondaryCircle, { top: '50%', left: '50%', borderColor: patternColor, opacity: patternOpacity * 0.6 }]} />
 
         {/* Corner geometric patterns - L-shaped */}
         <View style={[styles.cornerPattern, styles.cornerTopLeft]}>
@@ -183,9 +166,7 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
     );
   };
 
-  const containerStyle = useAnimatedStyle(() => ({
-    perspective: 1000,
-  }));
+  const containerStyle = useAnimatedStyle(() => ({}));
 
   return (
     <Animated.View
@@ -210,6 +191,13 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         pointerEvents="none"
       >
         {getCardBackPattern()}
+          {playerName && (
+            <View style={styles.backNameContainer}>
+              <Text style={[styles.backNameText, { color: colors.text }]}>
+                {playerName}
+              </Text>
+            </View>
+          )}
           <View style={styles.backLabelContainer}>
             <View style={[styles.backLabelBox, { backgroundColor: colors.accentLight, borderColor: colors.accent }]}>
               <Text style={[styles.backLabel, { color: colors.accent }]}>
@@ -234,12 +222,14 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
       >
         {/* Subtle geometric border on revealed side */}
         <View style={styles.revealedPatternContainer}>
-          <View style={[styles.revealedBorderLine, styles.revealedBorderTop, { backgroundColor: colors.border, opacity: 0.2 }]} />
-          <View style={[styles.revealedBorderLine, styles.revealedBorderBottom, { backgroundColor: colors.border, opacity: 0.2 }]} />
-          <View style={[styles.revealedBorderLine, styles.revealedBorderLeft, { backgroundColor: colors.border, opacity: 0.2 }]} />
-          <View style={[styles.revealedBorderLine, styles.revealedBorderRight, { backgroundColor: colors.border, opacity: 0.2 }]} />
+          <View style={[styles.revealedBorderLine, styles.revealedBorderTop, { backgroundColor: colors.border, opacity: 0.25 }]} />
+          <View style={[styles.revealedBorderLine, styles.revealedBorderBottom, { backgroundColor: colors.border, opacity: 0.25 }]} />
+          <View style={[styles.revealedBorderLine, styles.revealedBorderLeft, { backgroundColor: colors.border, opacity: 0.25 }]} />
+          <View style={[styles.revealedBorderLine, styles.revealedBorderRight, { backgroundColor: colors.border, opacity: 0.25 }]} />
         </View>
-        {children}
+        <View style={styles.revealedContentContainer}>
+          {children}
+        </View>
       </Animated.View>
     </Animated.View>
   );
@@ -284,12 +274,13 @@ const styles = StyleSheet.create({
   },
   patternTextContainer: {
     position: 'absolute',
-    top: '50%',
-    left: '50%',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     zIndex: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    transform: [{ translateX: -70 }, { translateY: -70 }],
   },
   patternText: {
     fontSize: 120,
@@ -297,15 +288,17 @@ const styles = StyleSheet.create({
     fontFamily: 'System',
     letterSpacing: 6,
     textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   largeCircleOverlay: {
     position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
     top: '50%',
     left: '50%',
-    transform: [{ translateX: -90 }, { translateY: -90 }],
+    transform: [{ translateX: -120 }, { translateY: -120 }],
     zIndex: 3,
   },
   // Islamic Geometric Pattern Styles
@@ -502,6 +495,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     pointerEvents: 'none',
   },
+  revealedContentContainer: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
   revealedBorderLine: {
     position: 'absolute',
   },
@@ -528,6 +528,22 @@ const styles = StyleSheet.create({
     top: spacing.xl,
     bottom: spacing.xl,
     width: 1,
+  },
+  backNameContainer: {
+    position: 'absolute',
+    top: spacing.xl + spacing.md,
+    zIndex: 2,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backNameText: {
+    ...typography.heading,
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    fontFamily: 'Etna Sans Serif',
+    textAlign: 'center',
   },
   backLabelContainer: {
     position: 'absolute',

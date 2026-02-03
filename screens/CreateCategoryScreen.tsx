@@ -6,8 +6,8 @@ import {
   ScrollView,
   TextInput,
   Pressable,
-  Alert,
 } from 'react-native';
+import { showAlert } from '../components/Alert';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -57,18 +57,18 @@ export default function CreateCategoryScreen() {
 
   const handleSave = async () => {
     if (!categoryName.trim()) {
-      Alert.alert('Error', 'Please enter a category name.');
+      showAlert({ title: 'Error', message: 'Please enter a category name.' });
       return;
     }
 
     if (!description.trim()) {
-      Alert.alert('Error', 'Please enter a category description.');
+      showAlert({ title: 'Error', message: 'Please enter a category description.' });
       return;
     }
 
     const validWords = words.filter(w => w.trim().length > 0);
     if (validWords.length < 3) {
-      Alert.alert('Error', 'Please add at least 3 words to your category.');
+      showAlert({ title: 'Error', message: 'Please add at least 3 words to your category.' });
       return;
     }
 
@@ -87,18 +87,19 @@ export default function CreateCategoryScreen() {
 
       await saveCustomCategory(newCategory);
       
-      Alert.alert(
-        'Success!',
-        'Your custom category has been created and saved.',
-        [
+      showAlert({
+        title: 'Success!',
+        message: 'Your custom category has been created and saved.',
+        buttons: [
           {
             text: 'OK',
             onPress: () => navigation.goBack(),
+            style: 'default',
           },
-        ]
-      );
+        ],
+      });
     } catch (error) {
-      Alert.alert('Error', 'Failed to save category. Please try again.');
+      showAlert({ title: 'Error', message: 'Failed to save category. Please try again.' });
       setIsSaving(false);
     }
   };

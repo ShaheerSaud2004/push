@@ -6,6 +6,7 @@ type GameContextType = {
   settings: GameSettings | null;
   setPlayers: (players: Player[]) => void;
   setSettings: (settings: GameSettings) => void;
+  updatePlayer: (playerId: string, updatedPlayer: Player) => void;
   resetGame: () => void;
 };
 
@@ -14,6 +15,12 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [settings, setSettings] = useState<GameSettings | null>(null);
+
+  const updatePlayer = (playerId: string, updatedPlayer: Player) => {
+    setPlayers(prevPlayers =>
+      prevPlayers.map(p => p.id === playerId ? updatedPlayer : p)
+    );
+  };
 
   const resetGame = () => {
     setPlayers([]);
@@ -27,6 +34,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         settings,
         setPlayers,
         setSettings,
+        updatePlayer,
         resetGame,
       }}
     >

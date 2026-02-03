@@ -100,9 +100,12 @@ export const Button: React.FC<ButtonProps> = ({
             typography.bodyBold,
             {
               color: getTextColor(),
+              fontSize: 18,
+              fontWeight: '700',
             },
             textStyle,
           ]}
+          numberOfLines={1}
         >
           {title}
         </Text>
@@ -113,11 +116,12 @@ export const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.lg,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44, // iOS accessibility minimum
+    minHeight: 56, // Larger touch target and better visibility
+    overflow: 'hidden', // Prevent text overflow
   },
 });

@@ -7,8 +7,8 @@ import {
   Pressable,
   Linking,
   Platform,
-  Alert,
 } from 'react-native';
+import { showAlert } from '../components/Alert';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +18,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { PatternBackground } from '../components/PatternBackground';
 import { typography, spacing } from '../theme';
 import * as Haptics from 'expo-haptics';
+import { getMaxContentWidth, getResponsivePadding } from '../utils/responsive';
 
 type SettingsScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -68,24 +69,24 @@ function SettingRow({ icon, label, sublabel, onPress, isLast, colors }: SettingR
 export default function SettingsScreen() {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const { colors } = useTheme();
+  const maxWidth = getMaxContentWidth();
+  const responsivePadding = getResponsivePadding();
 
   const handleRateApp = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const appStoreUrl = Platform.select({
       ios: 'https://apps.apple.com/app/id1234567890',
-      android: 'https://play.google.com/store/apps/details?id=com.khafi.app',
       default: '',
     });
     if (appStoreUrl) {
       Linking.openURL(appStoreUrl).catch(() => {
-        Alert.alert('Error', 'Unable to open the app store. Please rate us manually!');
+        showAlert({ title: 'Error', message: 'Unable to open the app store. Please rate us manually!' });
       });
     } else {
-      Alert.alert(
-        'Rate Khafī',
-        "Thank you for wanting to rate us! The app isn't on the stores yet, but we appreciate your support!",
-        [{ text: 'OK' }]
-      );
+      showAlert({
+        title: 'Rate Khafī',
+        message: "Thank you for wanting to rate us! The app isn't on the stores yet, but we appreciate your support!",
+      });
     }
   };
 
@@ -96,15 +97,11 @@ export default function SettingsScreen() {
     const body = encodeURIComponent(`Hi Khafī Team,\n\nI wanted to share some feedback:\n\n`);
     const mailtoUrl = `mailto:${email}?subject=${subject}&body=${body}`;
     Linking.openURL(mailtoUrl).catch(() => {
-      Alert.alert('Send Feedback', `Email us at:\n\n${email}\n\nWe'd love to hear from you!`, [
-        { text: 'OK' },
-      ]);
+      showAlert({
+        title: 'Send Feedback',
+        message: `Email us at:\n\n${email}\n\nWe'd love to hear from you!`,
+      });
     });
-  };
-
-  const handleUpgrade = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate('Upgrade');
   };
 
   const handleCreateCategory = () => {
@@ -119,7 +116,10 @@ export default function SettingsScreen() {
     >
       <PatternBackground />
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { maxWidth, alignSelf: 'center', width: '100%' },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInDown.delay(0).springify()}>
@@ -152,18 +152,6 @@ export default function SettingsScreen() {
           </View>
 
           <View style={[styles.section, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>PREMIUM</Text>
-            <SettingRow
-              icon="👑"
-              label="Paid plans"
-              sublabel="Unlock all categories & more"
-              onPress={handleUpgrade}
-              isLast
-              colors={colors}
-            />
-          </View>
-
-          <View style={[styles.section, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>SUPPORT</Text>
             <SettingRow
               icon="⭐"
@@ -177,12 +165,42 @@ export default function SettingsScreen() {
               label="Send feedback"
               sublabel="We read every message"
               onPress={handleSendFeedback}
+              colors={colors}
+            />
+            <SettingRow
+              icon="🔒"
+              label="Privacy Policy"
+              sublabel="How we handle your data"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                const privacyUrl = 'https://shaheersaud2004.github.io/push/privacy-policy.html';
+                Linking.openURL(privacyUrl).catch(() => {
+                  showAlert({
+                    title: 'Privacy Policy',
+                    message: 'Our privacy policy explains how we collect, use, and protect your data.\n\nWe do not collect, store, or share any personal data. All game data is stored locally on your device.\n\nFor the full privacy policy, visit:\nhttps://shaheersaud2004.github.io/push/privacy-policy.html',
+                  });
+                });
+              }}
               isLast
               colors={colors}
             />
           </View>
 
-          <Animated.View entering={FadeIn.delay(400)} style={styles.footer}>
+          <Animated.View entering={FadeIn.delay(400)} style={[styles.infoSection, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
+            <View style={styles.infoContent}>
+              <Text style={[styles.infoIcon, { color: colors.accent }]}>✨</Text>
+              <View style={styles.infoTextContainer}>
+                <Text style={[styles.infoTitle, { color: colors.text }]}>
+                  First Iteration
+                </Text>
+                <Text style={[styles.infoMessage, { color: colors.textSecondary }]}>
+                  This is the first version of Khafī. New features and improvements will be added soon!
+                </Text>
+              </View>
+            </View>
+          </Animated.View>
+
+          <Animated.View entering={FadeIn.delay(500)} style={styles.footer}>
             <Text style={[styles.footerText, { color: colors.textSecondary }]}>
               Khafī · خفي
             </Text>
@@ -203,6 +221,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
+    width: '100%',
   },
   header: {
     marginBottom: spacing.xl,
@@ -278,6 +297,36 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '300',
     marginLeft: spacing.sm,
+  },
+  infoSection: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginBottom: spacing.lg,
+    padding: spacing.lg,
+  },
+  infoContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+  },
+  infoIcon: {
+    fontSize: 24,
+    marginTop: 2,
+  },
+  infoTextContainer: {
+    flex: 1,
+  },
+  infoTitle: {
+    ...typography.bodyBold,
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  infoMessage: {
+    ...typography.body,
+    fontSize: 14,
+    lineHeight: 20,
   },
   footer: {
     alignItems: 'center',

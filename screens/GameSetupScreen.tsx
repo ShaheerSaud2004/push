@@ -6,9 +6,11 @@ import {
   ScrollView,
   TextInput,
   Pressable,
-  Alert,
   Modal,
+  Image,
 } from 'react-native';
+import { showAlert } from '../components/Alert';
+import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,15 +37,13 @@ import {
   selectRandomCategory,
   selectSingleRandomCategory,
   getCategoryName,
+  selectQuizQuestion,
+  selectImposterQuizQuestion,
 } from '../utils/game';
-import { getSettings, getCustomCategories, saveLocationCategories, getLocationCategories, getUsedWords, addUsedWord } from '../utils/storage';
-import { GameSettings, GameMode, Category } from '../types';
-import { 
-  requestLocationPermission, 
-  getNearbyCoffeeShops, 
-  getNearbyHalalSpots,
-  businessesToWords 
-} from '../utils/location';
+import { getSettings, getCustomCategories, getUsedWords, addUsedWord } from '../utils/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GameSettings, GameMode, Category, Difficulty } from '../types';
+import { getMaxContentWidth, getResponsivePadding } from '../utils/responsive';
 
 type GameSetupScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -55,6 +55,8 @@ export default function GameSetupScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { setPlayers, setSettings } = useGame();
+  const maxWidth = getMaxContentWidth();
+  const responsivePadding = getResponsivePadding();
 
   const [numPlayers, setNumPlayers] = useState(3);
   const [numImposters, setNumImposters] = useState(1);
@@ -65,25 +67,73 @@ export default function GameSetupScreen() {
   const [showHintToImposter, setShowHintToImposter] = useState(false);
   const [customCategories, setCustomCategories] = useState<Category[]>([]);
   const [modalCategory, setModalCategory] = useState<Category | null>(null);
-  const [infoModal, setInfoModal] = useState<'blind' | 'double' | 'word' | 'question' | null>(null);
+  const [infoModal, setInfoModal] = useState<'blind' | 'double' | 'word' | 'quiz' | null>(null);
   const [showAllCategories, setShowAllCategories] = useState(false);
-  const [showLocationModal, setShowLocationModal] = useState(false);
-  const [locationCategoryType, setLocationCategoryType] = useState<'coffee' | 'halal' | null>(null);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [locationCategories, setLocationCategories] = useState<{ coffee?: Category; halal?: Category }>({});
   const [playerNames, setPlayerNames] = useState<string[]>(['', '', '']);
-  const [isPremium, setIsPremium] = useState(false);
+  const [difficulty, setDifficulty] = useState<Difficulty | 'all'>('all');
+  const [showDifficultyModal, setShowDifficultyModal] = useState(false);
+  const [showNameInputModal, setShowNameInputModal] = useState(false);
+  const [nameInputModalIndex, setNameInputModalIndex] = useState<number | null>(null);
+  const [tempNameInput, setTempNameInput] = useState('');
+
+  // Clear selected categories when difficulty changes
+  useEffect(() => {
+    setSelectedCategories([]);
+  }, [difficulty]);
 
   useEffect(() => {
-    loadCustomCategories();
-    loadLocationCategories();
-    loadPremiumStatus();
+    // Load data asynchronously to prevent blocking render
+    const loadData = async () => {
+      await Promise.all([
+        loadCustomCategories(),
+      ]);
+    };
+    loadData();
+    loadSavedPlayerNames();
   }, []);
 
-  const loadPremiumStatus = async () => {
-    const { getIsPremium } = await import('../utils/storage');
-    const premium = await getIsPremium();
-    setIsPremium(premium);
+  const loadSavedPlayerNames = async () => {
+    try {
+      // Try to load from AsyncStorage
+      const savedNames = await AsyncStorage.getItem('@khafi:playerNames');
+      if (savedNames) {
+        const parsed = JSON.parse(savedNames);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setPlayerNames(parsed);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading saved player names:', error);
+    }
+  };
+
+  const savePlayerNames = async (names: string[]) => {
+    try {
+      await AsyncStorage.setItem('@khafi:playerNames', JSON.stringify(names));
+    } catch (error) {
+      console.error('Error saving player names:', error);
+    }
+  };
+
+  const handleNameInputSubmit = async () => {
+    if (nameInputModalIndex === null) return;
+    
+    const name = tempNameInput.trim();
+    if (!name) {
+      showAlert({ title: 'Name Required', message: 'Please enter a name for this player.' });
+      return;
+    }
+
+    // Update the name
+    const updatedNames = [...playerNames];
+    updatedNames[nameInputModalIndex] = name;
+    setPlayerNames(updatedNames);
+    setTempNameInput('');
+    setShowNameInputModal(false);
+    
+    // All names filled, continue with game start
+    setNameInputModalIndex(null);
+    await startGame(); // Start the game
   };
 
   // Update player names array when number of players changes
@@ -105,173 +155,38 @@ export default function GameSetupScreen() {
     });
   };
 
+
   const loadCustomCategories = async () => {
     const custom = await getCustomCategories();
     setCustomCategories(custom);
-  };
-
-  const loadLocationCategories = async () => {
-    const stored = await getLocationCategories();
-    setLocationCategories(stored);
-  };
-
-  const fetchLocationData = async (type: 'coffee' | 'halal'): Promise<boolean> => {
-    setIsLoadingLocation(true);
-    try {
-      const businesses = type === 'coffee' 
-        ? await getNearbyCoffeeShops()
-        : await getNearbyHalalSpots();
-      
-      if (businesses.length === 0) {
-        Alert.alert(
-          'No Results Found', 
-          `We couldn't find nearby ${type === 'coffee' ? 'Muslim-owned coffee shops' : 'halal restaurants'} in your area. Please try again later or select a different category.`,
-          [{ text: 'OK' }]
-        );
-        setIsLoadingLocation(false);
-        return false;
-      }
-
-      const words = businessesToWords(businesses);
-      const categoryId = type === 'coffee' ? 'muslim-coffee' : 'local-halal';
-      const baseCategory = defaultCategories.find(c => c.id === categoryId);
-      
-      if (baseCategory) {
-        const updatedCategory: Category = {
-          ...baseCategory,
-          words,
-        };
-
-        const updated = { ...locationCategories };
-        if (type === 'coffee') {
-          updated.coffee = updatedCategory;
-        } else {
-          updated.halal = updatedCategory;
-        }
-        
-        setLocationCategories(updated);
-        await saveLocationCategories(updated);
-        
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert(
-          'Success!', 
-          `Found ${businesses.length} nearby ${type === 'coffee' ? 'coffee shops' : 'halal restaurants'}! They've been added to your game.`,
-          [{ text: 'Great!' }]
-        );
-        setIsLoadingLocation(false);
-        return true;
-      }
-      setIsLoadingLocation(false);
-      return false;
-    } catch (error) {
-      console.error('Error fetching location data:', error);
-      Alert.alert(
-        'Error', 
-        'Failed to fetch location data. Please try again or use default categories.',
-        [{ text: 'OK' }]
-      );
-      setIsLoadingLocation(false);
-      return false;
-    }
-  };
-
-  const handleLocationPermissionRequest = async () => {
-    const granted = await requestLocationPermission();
-    
-    if (granted) {
-      if (locationCategoryType) {
-        const success = await fetchLocationData(locationCategoryType);
-        // After fetching, automatically select the category if successful
-        if (success) {
-          const categoryId = locationCategoryType === 'coffee' ? 'muslim-coffee' : 'local-halal';
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          setSelectedCategories(prev =>
-            prev.includes(categoryId)
-              ? prev
-              : [...prev, categoryId]
-          );
-        }
-      }
-    } else {
-      Alert.alert(
-        'Location Permission Required',
-        'We need your location to find nearby Muslim-owned businesses. This category will only show real local places based on your location. You can enable location permission in your device settings.',
-        [{ text: 'OK' }]
-      );
-    }
-    setShowLocationModal(false);
-    setLocationCategoryType(null);
   };
 
   const recommendedImposters = Math.floor(numPlayers / 3);
   const maxImposters = numPlayers - 1; // Can't have all players be imposters
   const exceedsRecommended = numImposters > recommendedImposters;
   
-  // Featured categories to show first
-  const featuredCategoryIds = ['muslim-coffee', 'local-halal'];
-  
-  // Reorder categories to show featured ones first
-  let sortedCategories = [...defaultCategories].sort((a, b) => {
-    const aFeatured = featuredCategoryIds.includes(a.id);
-    const bFeatured = featuredCategoryIds.includes(b.id);
-    if (aFeatured && !bFeatured) return -1;
-    if (!aFeatured && bFeatured) return 1;
-    return 0;
-  });
+  // Use default categories
+  let sortedCategories = [...defaultCategories];
 
-  // Replace location-based categories with stored ones if available (only if they have words)
-  if (locationCategories.coffee && locationCategories.coffee.words.length > 0) {
-    const index = sortedCategories.findIndex(c => c.id === 'muslim-coffee');
-    if (index >= 0) {
-      sortedCategories[index] = locationCategories.coffee;
-    }
-  }
-  if (locationCategories.halal && locationCategories.halal.words.length > 0) {
-    const index = sortedCategories.findIndex(c => c.id === 'local-halal');
-    if (index >= 0) {
-      sortedCategories[index] = locationCategories.halal;
-    }
+  // Filter categories by difficulty
+  let filteredCategories = sortedCategories;
+  if (difficulty !== 'all') {
+    filteredCategories = sortedCategories.filter(cat => {
+      // Custom categories don't have difficulty, show them always
+      if (cat.isCustom) {
+        return true;
+      }
+      return cat.difficulty === difficulty;
+    });
   }
 
-  const availableCategories = [...sortedCategories, ...customCategories];
+  const availableCategories = [...filteredCategories, ...customCategories];
   
   const MAX_VISIBLE_CATEGORIES = 6;
   const visibleCategories = availableCategories.slice(0, MAX_VISIBLE_CATEGORIES);
   const hasMoreCategories = availableCategories.length > MAX_VISIBLE_CATEGORIES;
 
   const toggleCategory = async (categoryId: string) => {
-    const category = availableCategories.find(c => c.id === categoryId);
-    if (category?.locked && !isPremium) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      Alert.alert(
-        '🔒 Locked Category',
-        'This category requires Premium. Unlock all categories and get unlimited custom categories with Premium!',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Upgrade',
-            onPress: () => navigation.navigate('Upgrade'),
-            style: 'default',
-          },
-        ]
-      );
-      return;
-    }
-
-    // Check if this is a location-based category - always require location data
-    if (categoryId === 'muslim-coffee' || categoryId === 'local-halal') {
-      const hasLocationData = categoryId === 'muslim-coffee' 
-        ? !!locationCategories.coffee && locationCategories.coffee.words.length > 0
-        : !!locationCategories.halal && locationCategories.halal.words.length > 0;
-      
-      if (!hasLocationData) {
-        // Always request location permission and fetch data
-        setLocationCategoryType(categoryId === 'muslim-coffee' ? 'coffee' : 'halal');
-        setShowLocationModal(true);
-        return;
-      }
-    }
-
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedCategories(prev =>
       prev.includes(categoryId)
@@ -294,28 +209,23 @@ export default function GameSetupScreen() {
     }
   };
 
-  const handleStart = async () => {
-    if (numImposters >= numPlayers) {
-      Alert.alert('Error', 'You cannot have all players be imposters. At least one player must be normal.');
-      return;
-    }
-
+  const startGame = async () => {
     // If no categories selected, randomly choose ONE category
     let categoriesToUse: string[];
     let secretCategoryId: string;
     
     if (selectedCategories.length === 0) {
       // Randomly select a single category
-      secretCategoryId = selectSingleRandomCategory(availableCategories, isPremium);
+      secretCategoryId = selectSingleRandomCategory(availableCategories);
       if (!secretCategoryId) {
-        Alert.alert('Error', 'No categories available. Please unlock a category.');
+        showAlert({ title: 'Error', message: 'No categories available. Please unlock a category.' });
         return;
       }
       categoriesToUse = [secretCategoryId];
     } else {
       // Use selected categories and randomly pick one for the word
       categoriesToUse = selectedCategories;
-      secretCategoryId = selectRandomCategory(categoriesToUse, availableCategories, isPremium);
+      secretCategoryId = selectRandomCategory(categoriesToUse, availableCategories);
     }
 
     // Get words from only the chosen category
@@ -323,19 +233,62 @@ export default function GameSetupScreen() {
     const chosenCategory = allCategories.find(c => c.id === secretCategoryId);
     
     if (!chosenCategory || chosenCategory.words.length === 0) {
-      Alert.alert('Error', 'No words available in selected category.');
+      showAlert({ title: 'Error', message: 'No words available in selected category.' });
       return;
     }
 
-    // Get used words and select a word that hasn't been used
-    const usedWords = await getUsedWords();
-    const secretWord = selectRandomWord(chosenCategory.words, usedWords);
+    // Handle Quiz Mode: Get question first, answer becomes the word
+    let secretWord: string;
+    let quizQuestion: string | undefined;
+    let imposterQuizQuestion: string | undefined;
     
-    // Mark word as used
-    await addUsedWord(secretWord);
+    if (mode === 'quiz') {
+      // Get a quiz question for this category
+      const { getRandomQuizQuestion } = require('../data/quizQuestions');
+      const normalQuestion = getRandomQuizQuestion(secretCategoryId, difficulty === 'all' ? undefined : difficulty);
+      
+      if (!normalQuestion) {
+        showAlert({ 
+          title: 'No Quiz Questions', 
+          message: 'No quiz questions available for this category. Please select a different category or use Word + Clue mode.' 
+        });
+        return;
+      }
+      
+      quizQuestion = normalQuestion.question;
+      secretWord = normalQuestion.answer; // The answer becomes the secret word
+      
+      // Get a different but similar question for the imposter (same category, same answer type, same question structure)
+      const imposterQ = selectImposterQuizQuestion(
+        secretCategoryId,
+        normalQuestion.id,
+        difficulty === 'all' ? undefined : difficulty,
+        normalQuestion.answer,
+        normalQuestion.question
+      );
+      if (imposterQ) {
+        imposterQuizQuestion = imposterQ.question;
+      } else {
+        // Fallback: use the same question if no other available
+        imposterQuizQuestion = quizQuestion;
+      }
+      
+      // Mark word as used
+      await addUsedWord(secretWord);
+    } else {
+      // Regular mode: Get used words and select a word that hasn't been used
+      const usedWords = await getUsedWords();
+      secretWord = selectRandomWord(chosenCategory.words, usedWords);
+      
+      // Mark word as used
+      await addUsedWord(secretWord);
+    }
     
-    const players = createPlayers(numPlayers, numImposters, doubleAgent, 'player-0', playerNames);
-    const startingPlayerId = players[Math.floor(Math.random() * players.length)].id;
+    // Select random starting player ID first
+    const randomPlayerIndex = Math.floor(Math.random() * numPlayers);
+    const startingPlayerId = `player-${randomPlayerIndex}`;
+    
+    const players = createPlayers(numPlayers, numImposters, doubleAgent, startingPlayerId, playerNames);
 
     const settings: GameSettings = {
       numPlayers,
@@ -349,13 +302,32 @@ export default function GameSetupScreen() {
       showCategoryToImposter: !blindImposter, // Show category when Blind Imposter is OFF
       showHintToImposter,
       startingPlayerId,
+      difficulty: difficulty === 'all' ? undefined : difficulty,
       secretWord,
       secretCategory: secretCategoryId,
+      playerNames: playerNames, // Save player names for persistence
+      quizQuestion: quizQuestion, // For quiz mode: question for normal players
+      imposterQuizQuestion: imposterQuizQuestion, // For quiz mode: question for imposter
     };
+
+    // Save player names for next game
+    await savePlayerNames(playerNames);
 
     setPlayers(players);
     setSettings(settings);
-    navigation.navigate('PassAndPlay');
+
+    // Navigate to game confirmation screen
+    navigation.navigate('GameConfirmation');
+  };
+
+  const handleStart = async () => {
+    if (numImposters >= numPlayers) {
+      showAlert({ title: 'Error', message: 'You cannot have all players be imposters. At least one player must be normal.' });
+      return;
+    }
+
+    // All validations passed, start the game
+    await startGame();
   };
 
   return (
@@ -364,8 +336,12 @@ export default function GameSetupScreen() {
       edges={['top', 'bottom']}
     >
       <PatternBackground />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { maxWidth, alignSelf: 'center', width: '100%' },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
@@ -499,65 +475,74 @@ export default function GameSetupScreen() {
         </Animated.View>
 
         {/* Player Names Card */}
-        <Animated.View entering={FadeInDown.delay(150).springify()}>
-          <Card style={styles.sectionCard}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Player Names
-            </Text>
-            <Text style={[styles.categoryHint, { color: colors.textSecondary, marginBottom: spacing.md }]}>
-              Enter names for each player (optional)
-            </Text>
-            <View style={styles.nameInputsContainer}>
-              {playerNames.map((name, index) => (
-                <Animated.View
-                  key={index}
-                  entering={FadeIn.delay(150 + index * 30)}
-                  style={styles.nameInputWrapper}
-                >
-                  <View style={[styles.nameInputLabel, { backgroundColor: colors.accentLight }]}>
-                    <Text style={[styles.nameInputLabelText, { color: colors.accent }]}>
-                      {index + 1}
-                    </Text>
-                  </View>
-                  <View style={styles.nameInputContainer}>
-                    <TextInput
-                      style={[
-                        styles.nameInput,
-                        {
-                          backgroundColor: colors.cardBackground,
-                          borderColor: colors.border,
-                          color: colors.text,
-                          paddingRight: name.trim() ? 40 : spacing.md,
-                        },
-                      ]}
-                      placeholder={`Player ${index + 1}`}
-                      placeholderTextColor={colors.textSecondary}
-                      value={name}
-                      onChangeText={(text) => updatePlayerName(index, text)}
-                      maxLength={20}
-                    />
-                    {name.trim() && (
-                      <Pressable
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          updatePlayerName(index, '');
-                        }}
-                        style={({ pressed }) => [
-                          styles.clearButton,
-                          { opacity: pressed ? 0.6 : 1 },
-                        ]}
-                      >
-                        <View style={[styles.clearButtonIcon, { backgroundColor: colors.textSecondary + '20' }]}>
-                          <Text style={[styles.clearButtonText, { color: colors.textSecondary }]}>×</Text>
-                        </View>
-                      </Pressable>
-                    )}
-                  </View>
-                </Animated.View>
-              ))}
-            </View>
-          </Card>
-        </Animated.View>
+        {
+          <Animated.View entering={FadeInDown.delay(175).springify()}>
+            <Card style={styles.sectionCard}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Player Names
+              </Text>
+              <Text style={[styles.categoryHint, { color: colors.textSecondary, marginBottom: spacing.md }]}>
+                Enter names for each player (optional)
+              </Text>
+              <View style={styles.nameInputsContainer}>
+                {playerNames.map((name, index) => (
+                  <Animated.View
+                    key={index}
+                    entering={FadeIn.delay(175 + index * 30)}
+                    style={styles.nameInputWrapper}
+                  >
+                    <View style={[styles.nameInputLabel, { backgroundColor: colors.accentLight }]}>
+                      <Text style={[styles.nameInputLabelText, { color: colors.accent }]}>
+                        {index + 1}
+                      </Text>
+                    </View>
+                    <View style={styles.nameInputContainer}>
+                      <View style={styles.nameInputFieldWrapper}>
+                        <TextInput
+                          style={[
+                            styles.nameInput,
+                            {
+                              backgroundColor: colors.cardBackground,
+                              borderColor: colors.border,
+                              color: colors.text,
+                              paddingRight: spacing.md,
+                              paddingLeft: spacing.md,
+                              textAlign: 'left',
+                              includeFontPadding: false,
+                              lineHeight: 20,
+                            },
+                          ]}
+                          placeholder={`Player ${index + 1}`}
+                          placeholderTextColor={colors.textSecondary}
+                          value={name}
+                          onChangeText={(text) => updatePlayerName(index, text)}
+                          maxLength={20}
+                          multiline={false}
+                        />
+                      </View>
+                      {name.trim() && (
+                        <Pressable
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            updatePlayerName(index, '');
+                          }}
+                          style={({ pressed }) => [
+                            styles.clearButton,
+                            { opacity: pressed ? 0.6 : 1 },
+                          ]}
+                        >
+                          <View style={[styles.clearButtonIcon, { backgroundColor: colors.textSecondary + '30', borderWidth: 1, borderColor: colors.border }]}>
+                            <Text style={[styles.clearButtonText, { color: colors.text }]}>✕</Text>
+                          </View>
+                        </Pressable>
+                      )}
+                    </View>
+                  </Animated.View>
+                ))}
+              </View>
+            </Card>
+          </Animated.View>
+        }
 
         {/* Game Mode & Special Modes Card */}
         <Animated.View entering={FadeInDown.delay(200).springify()}>
@@ -569,114 +554,135 @@ export default function GameSetupScreen() {
             </View>
             <View style={styles.modeContainer}>
               <View style={styles.modeOptionWrapper}>
-                <Pressable
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setMode('word');
-                  }}
-                  style={({ pressed }) => [
-                    styles.modeOption,
-                    {
-                      backgroundColor: pressed
-                        ? colors.accentLight
-                        : mode === 'word'
-                        ? colors.accentLight
-                        : colors.border,
-                      borderColor:
-                        mode === 'word' || pressed ? colors.accent : colors.border,
-                      borderWidth: mode === 'word' || pressed ? 2 : 1,
-                      transform: [{ scale: pressed ? 0.96 : 1 }],
-                      shadowColor: pressed ? colors.accent : 'transparent',
-                      shadowOffset: { width: 0, height: pressed ? 2 : 0 },
-                      shadowOpacity: pressed ? 0.2 : 0,
-                      shadowRadius: pressed ? 4 : 0,
-                      elevation: pressed ? 3 : 0,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.modeText,
+                <View style={{ position: 'relative' }}>
+                  <Pressable
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setMode('word');
+                    }}
+                    style={({ pressed }) => [
+                      styles.modeOption,
                       {
-                        color: mode === 'word' ? colors.accent : colors.textSecondary,
-                        fontWeight: mode === 'word' ? '700' : '500',
+                        backgroundColor: pressed
+                          ? colors.accentLight
+                          : mode === 'word'
+                          ? colors.accentLight
+                          : colors.border,
+                        borderColor:
+                          mode === 'word' || pressed ? colors.accent : colors.border,
+                        borderWidth: mode === 'word' || pressed ? 2 : 1,
+                        transform: [{ scale: pressed ? 0.96 : 1 }],
+                        shadowColor: pressed ? colors.accent : 'transparent',
+                        shadowOffset: { width: 0, height: pressed ? 2 : 0 },
+                        shadowOpacity: pressed ? 0.2 : 0,
+                        shadowRadius: pressed ? 4 : 0,
+                        elevation: pressed ? 3 : 0,
                       },
                     ]}
                   >
-                    Word + Clue
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setInfoModal('word');
-                  }}
-                  style={styles.modeInfoButton}
-                >
-                  <View style={[styles.modeInfoIcon, { backgroundColor: colors.accentLight }]}>
-                    <Text style={[styles.infoIconText, { color: colors.accent }]}>i</Text>
-                  </View>
-                </Pressable>
+                    <Text
+                      style={[
+                        styles.modeText,
+                        {
+                          color: mode === 'word' ? colors.accent : colors.text,
+                          fontWeight: mode === 'word' ? '700' : '600',
+                        },
+                      ]}
+                    >
+                      Word + Clue
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setInfoModal('word');
+                    }}
+                    style={styles.readMoreButtonInBox}
+                  >
+                      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                        <Path
+                          d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+                          stroke={colors.textSecondary}
+                          strokeWidth={1.5}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          opacity={0.6}
+                        />
+                      </Svg>
+                  </Pressable>
+                </View>
               </View>
               <View style={styles.modeOptionWrapper}>
-                <Pressable
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setMode('question');
-                  }}
-                  style={({ pressed }) => [
-                    styles.modeOption,
-                    {
-                      backgroundColor: pressed
-                        ? colors.accentLight
-                        : mode === 'question'
-                        ? colors.accentLight
-                        : colors.border,
-                      borderColor:
-                        mode === 'question' || pressed ? colors.accent : colors.border,
-                      borderWidth: mode === 'question' || pressed ? 2 : 1,
-                      transform: [{ scale: pressed ? 0.96 : 1 }],
-                      shadowColor: pressed ? colors.accent : 'transparent',
-                      shadowOffset: { width: 0, height: pressed ? 2 : 0 },
-                      shadowOpacity: pressed ? 0.2 : 0,
-                      shadowRadius: pressed ? 4 : 0,
-                      elevation: pressed ? 3 : 0,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.modeText,
+                <View style={{ position: 'relative' }}>
+                  <Pressable
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setMode('quiz');
+                    }}
+                    style={({ pressed }) => [
+                      styles.modeOption,
                       {
-                        color: mode === 'question' ? colors.accent : colors.textSecondary,
-                        fontWeight: mode === 'question' ? '700' : '500',
+                        backgroundColor:
+                          pressed
+                            ? colors.accentLight
+                            : mode === 'quiz'
+                            ? colors.accentLight
+                            : colors.border,
+                        borderColor:
+                          mode === 'quiz' || pressed ? colors.accent : colors.border,
+                        borderWidth: mode === 'quiz' || pressed ? 2 : 1,
+                        transform: [{ scale: pressed ? 0.96 : 1 }],
+                        shadowColor: pressed ? colors.accent : 'transparent',
+                        shadowOffset: { width: 0, height: pressed ? 2 : 0 },
+                        shadowOpacity: pressed ? 0.2 : 0,
+                        shadowRadius: pressed ? 4 : 0,
+                        elevation: pressed ? 3 : 0,
                       },
                     ]}
                   >
-                    Question
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setInfoModal('question');
-                  }}
-                  style={styles.modeInfoButton}
-                >
-                  <View style={[styles.modeInfoIcon, { backgroundColor: colors.accentLight }]}>
-                    <Text style={[styles.infoIconText, { color: colors.accent }]}>i</Text>
-                  </View>
-                </Pressable>
+                    <Text
+                      style={[
+                        styles.modeText,
+                        {
+                          color: mode === 'quiz' ? colors.accent : colors.text,
+                          fontWeight: mode === 'quiz' ? '700' : '600',
+                        },
+                      ]}
+                    >
+                      Quiz/Questions
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setInfoModal('quiz');
+                    }}
+                    style={styles.readMoreButtonInBox}
+                  >
+                    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                      <Path
+                        d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+                        stroke={colors.textSecondary}
+                        strokeWidth={1.5}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        opacity={0.6}
+                      />
+                    </Svg>
+                  </Pressable>
+                </View>
               </View>
             </View>
 
             <View style={[styles.divider, { backgroundColor: colors.border, marginTop: spacing.lg }]} />
 
-            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg }]}>
-              Special Modes
-            </Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg }]}>
+                Special Modes
+              </Text>
+            </View>
             
             <View style={styles.toggleContainer}>
               <Pressable
@@ -700,11 +706,17 @@ export default function GameSetupScreen() {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         setInfoModal('blind');
                       }}
-                      style={styles.infoButton}
+                      style={styles.readMoreButtonInline}
                     >
-                      <View style={[styles.infoIcon, { backgroundColor: colors.accentLight }]}>
-                        <Text style={[styles.infoIconText, { color: colors.accent }]}>i</Text>
-                      </View>
+                      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                        <Path
+                          d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+                          stroke={colors.textSecondary}
+                          strokeWidth={1.5}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </Svg>
                     </Pressable>
                   </View>
                   <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
@@ -751,11 +763,17 @@ export default function GameSetupScreen() {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         setInfoModal('double');
                       }}
-                      style={styles.infoButton}
+                      style={styles.readMoreButtonInline}
                     >
-                      <View style={[styles.infoIcon, { backgroundColor: colors.doubleAgent + '20' }]}>
-                        <Text style={[styles.infoIconText, { color: colors.doubleAgent }]}>i</Text>
-                      </View>
+                      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                        <Path
+                          d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+                          stroke={colors.textSecondary}
+                          strokeWidth={1.5}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </Svg>
                     </Pressable>
                   </View>
                   <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
@@ -784,8 +802,248 @@ export default function GameSetupScreen() {
           </Card>
         </Animated.View>
 
-        {/* Categories Card */}
+        {/* Difficulty Level Card */}
         <Animated.View entering={FadeInDown.delay(300).springify()}>
+          <Card style={styles.sectionCard}>
+            <View style={styles.gameModeHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Difficulty Level
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowDifficultyModal(true);
+              }}
+              style={({ pressed }) => [
+                styles.difficultyDropdown,
+                {
+                  backgroundColor: colors.cardBackground,
+                  borderColor: colors.border,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+            >
+              <View style={styles.difficultyDropdownContent}>
+                <View style={styles.difficultyIcons}>
+                  {difficulty === 'easy' && (
+                    <Svg width={20} height={20} viewBox="0 -960 960 960">
+                      <Path
+                        d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                        fill={colors.accent}
+                      />
+                    </Svg>
+                  )}
+                  {difficulty === 'medium' && (
+                    <>
+                      <Svg width={20} height={20} viewBox="0 -960 960 960">
+                        <Path
+                          d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                          fill={colors.accent}
+                        />
+                      </Svg>
+                      <Svg width={20} height={20} viewBox="0 -960 960 960">
+                        <Path
+                          d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                          fill={colors.accent}
+                        />
+                      </Svg>
+                    </>
+                  )}
+                  {difficulty === 'hard' && (
+                    <>
+                      <Svg width={20} height={20} viewBox="0 -960 960 960">
+                        <Path
+                          d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                          fill={colors.accent}
+                        />
+                      </Svg>
+                      <Svg width={20} height={20} viewBox="0 -960 960 960">
+                        <Path
+                          d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                          fill={colors.accent}
+                        />
+                      </Svg>
+                      <Svg width={20} height={20} viewBox="0 -960 960 960">
+                        <Path
+                          d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                          fill={colors.accent}
+                        />
+                      </Svg>
+                    </>
+                  )}
+                  {difficulty === 'all' && (
+                    <>
+                      <Svg width={20} height={20} viewBox="0 -960 960 960">
+                        <Path
+                          d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                          fill={colors.accent}
+                        />
+                      </Svg>
+                      <Svg width={20} height={20} viewBox="0 -960 960 960">
+                        <Path
+                          d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                          fill={colors.accent}
+                        />
+                      </Svg>
+                      <Svg width={20} height={20} viewBox="0 -960 960 960">
+                        <Path
+                          d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                          fill={colors.accent}
+                        />
+                      </Svg>
+                      <Svg width={20} height={20} viewBox="0 -960 960 960">
+                        <Path
+                          d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                          fill={colors.accent}
+                        />
+                      </Svg>
+                    </>
+                  )}
+                </View>
+                <Text style={[styles.difficultyDropdownText, { color: colors.text }]}>
+                  {difficulty === 'easy' ? 'Easy' : difficulty === 'medium' ? 'Medium' : difficulty === 'hard' ? 'Hard' : 'All'}
+                </Text>
+                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                  <Path
+                    d="M7 10l5 5 5-5"
+                    stroke={colors.textSecondary}
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </Svg>
+              </View>
+            </Pressable>
+
+            {/* Difficulty Selection Modal */}
+            <Modal
+              visible={showDifficultyModal}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={() => setShowDifficultyModal(false)}
+            >
+              <Pressable
+                style={styles.modalOverlay}
+                onPress={() => setShowDifficultyModal(false)}
+              >
+                <View style={[styles.difficultyModalContent, { backgroundColor: colors.cardBackground }]}>
+                  {(['easy', 'medium', 'hard', 'all'] as const).map((level) => (
+                    <Pressable
+                      key={level}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setDifficulty(level);
+                        setShowDifficultyModal(false);
+                      }}
+                      style={({ pressed }) => [
+                        styles.difficultyModalOption,
+                        {
+                          backgroundColor: difficulty === level ? colors.accentLight : 'transparent',
+                          borderColor: difficulty === level ? colors.accent : colors.border,
+                          opacity: pressed ? 0.7 : 1,
+                        },
+                      ]}
+                    >
+                      <View style={styles.difficultyModalOptionContent}>
+                        <View style={styles.difficultyIcons}>
+                          {level === 'easy' && (
+                            <Svg width={20} height={20} viewBox="0 -960 960 960">
+                              <Path
+                                d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                                fill={difficulty === level ? colors.accent : colors.textSecondary}
+                              />
+                            </Svg>
+                          )}
+                          {level === 'medium' && (
+                            <>
+                              <Svg width={20} height={20} viewBox="0 -960 960 960">
+                                <Path
+                                  d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                                  fill={difficulty === level ? colors.accent : colors.textSecondary}
+                                />
+                              </Svg>
+                              <Svg width={20} height={20} viewBox="0 -960 960 960">
+                                <Path
+                                  d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                                  fill={difficulty === level ? colors.accent : colors.textSecondary}
+                                />
+                              </Svg>
+                            </>
+                          )}
+                          {level === 'hard' && (
+                            <>
+                              <Svg width={20} height={20} viewBox="0 -960 960 960">
+                                <Path
+                                  d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                                  fill={difficulty === level ? colors.accent : colors.textSecondary}
+                                />
+                              </Svg>
+                              <Svg width={20} height={20} viewBox="0 -960 960 960">
+                                <Path
+                                  d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                                  fill={difficulty === level ? colors.accent : colors.textSecondary}
+                                />
+                              </Svg>
+                              <Svg width={20} height={20} viewBox="0 -960 960 960">
+                                <Path
+                                  d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                                  fill={difficulty === level ? colors.accent : colors.textSecondary}
+                                />
+                              </Svg>
+                            </>
+                          )}
+                          {level === 'all' && (
+                            <>
+                              <Svg width={20} height={20} viewBox="0 -960 960 960">
+                                <Path
+                                  d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                                  fill={difficulty === level ? colors.accent : colors.textSecondary}
+                                />
+                              </Svg>
+                              <Svg width={20} height={20} viewBox="0 -960 960 960">
+                                <Path
+                                  d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                                  fill={difficulty === level ? colors.accent : colors.textSecondary}
+                                />
+                              </Svg>
+                              <Svg width={20} height={20} viewBox="0 -960 960 960">
+                                <Path
+                                  d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                                  fill={difficulty === level ? colors.accent : colors.textSecondary}
+                                />
+                              </Svg>
+                              <Svg width={20} height={20} viewBox="0 -960 960 960">
+                                <Path
+                                  d="M240-400q0 52 21 98.5t60 81.5q-1-5-1-9v-9q0-32 12-60t35-51l113-111 113 111q23 23 35 51t12 60v9q0 4-1 9 39-35 60-81.5t21-98.5q0-50-18.5-94.5T648-574q-20 13-42 19.5t-45 6.5q-62 0-107.5-41T401-690q-39 33-69 68.5t-50.5 72Q261-513 250.5-475T240-400Zm240 52-57 56q-11 11-17 25t-6 29q0 32 23.5 55t56.5 23q33 0 56.5-23t23.5-55q0-16-6-29.5T537-292l-57-56Zm0-492v132q0 34 23.5 57t57.5 23q18 0 33.5-7.5T622-658l18-22q74 42 117 117t43 163q0 134-93 227T480-80q-134 0-227-93t-93-227q0-129 86.5-245T480-840Z"
+                                  fill={difficulty === level ? colors.accent : colors.textSecondary}
+                                />
+                              </Svg>
+                            </>
+                          )}
+                        </View>
+                        <Text
+                          style={[
+                            styles.difficultyModalOptionText,
+                            {
+                              color: difficulty === level ? colors.accent : colors.text,
+                              fontWeight: difficulty === level ? '700' : '600',
+                            },
+                          ]}
+                        >
+                          {level === 'easy' ? 'Easy' : level === 'medium' ? 'Medium' : level === 'hard' ? 'Hard' : 'All'}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              </Pressable>
+            </Modal>
+          </Card>
+        </Animated.View>
+
+        {/* Categories Card */}
+        <Animated.View entering={FadeInDown.delay(400).springify()}>
           <Card style={styles.sectionCard}>
             <View style={styles.categoryHeader}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -827,7 +1085,6 @@ export default function GameSetupScreen() {
                           ? colors.accent
                           : colors.border,
                         borderWidth: selectedCategories.includes(category.id) || pressed ? 2 : 1,
-                        opacity: category.locked ? 0.5 : 1,
                         transform: [{ scale: pressed ? 0.95 : 1 }],
                         shadowColor: pressed ? colors.accent : 'transparent',
                         shadowOffset: { width: 0, height: pressed ? 2 : 0 },
@@ -858,14 +1115,6 @@ export default function GameSetupScreen() {
                       >
                         {category.name}
                       </Text>
-                      {featuredCategoryIds.includes(category.id) && (
-                        <View style={[styles.featuredBadge, { backgroundColor: colors.accentLight }]}>
-                          <Text style={[styles.featuredText, { color: colors.accent }]}>⭐</Text>
-                        </View>
-                      )}
-                      {category.locked && (
-                        <Text style={styles.lockIcon}>🔒</Text>
-                      )}
                     </View>
                   </Pressable>
                 </Animated.View>
@@ -906,6 +1155,96 @@ export default function GameSetupScreen() {
           />
         </Animated.View>
       </ScrollView>
+
+      {/* Name Input Modal */}
+      <Modal
+        visible={showNameInputModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowNameInputModal(false);
+          setNameInputModalIndex(null);
+          setTempNameInput('');
+        }}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => {
+            setShowNameInputModal(false);
+            setNameInputModalIndex(null);
+            setTempNameInput('');
+          }}
+        >
+          <Card
+            style={styles.modalContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.modalHeaderRow}>
+              <Text style={[styles.modalTitle, { color: colors.text, flex: 1, marginBottom: 0 }]}>
+                Enter Player Name
+              </Text>
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowNameInputModal(false);
+                  setNameInputModalIndex(null);
+                  setTempNameInput('');
+                }}
+                style={({ pressed }) => [
+                  styles.modalCloseBtn,
+                  { backgroundColor: colors.border, opacity: pressed ? 0.6 : 1 },
+                ]}
+              >
+                <Text style={[styles.modalCloseBtnText, { color: colors.text }]}>✕</Text>
+              </Pressable>
+            </View>
+            <Text style={[styles.modalDescription, { color: colors.textSecondary, marginBottom: spacing.md }]}>
+              Please enter a name for Player {nameInputModalIndex !== null ? nameInputModalIndex + 1 : ''}
+            </Text>
+            <TextInput
+              style={[
+                styles.nameInput,
+                {
+                  backgroundColor: colors.cardBackground,
+                  borderColor: colors.border,
+                  color: colors.text,
+                  paddingRight: spacing.md,
+                  paddingLeft: spacing.md,
+                  marginBottom: spacing.md,
+                },
+              ]}
+              placeholder="Player name"
+              placeholderTextColor={colors.textSecondary}
+              value={tempNameInput}
+              onChangeText={setTempNameInput}
+              maxLength={20}
+              autoFocus
+              onSubmitEditing={handleNameInputSubmit}
+            />
+            <View style={styles.modalButtonRow}>
+              <View style={styles.modalButtonWrapper}>
+                <Button
+                  title="Cancel"
+                  onPress={() => {
+                    setShowNameInputModal(false);
+                    setNameInputModalIndex(null);
+                    setTempNameInput('');
+                  }}
+                  variant="secondary"
+                  style={styles.modalButtonCompact}
+                />
+              </View>
+              <View style={styles.modalButtonWrapper}>
+                <Button
+                  title="Continue"
+                  onPress={handleNameInputSubmit}
+                  style={styles.modalButtonCompact}
+                />
+              </View>
+            </View>
+          </Card>
+        </Pressable>
+      </Modal>
 
       {/* Category Modal */}
       <Modal
@@ -997,179 +1336,162 @@ export default function GameSetupScreen() {
               contentContainerStyle={styles.categoriesListContent}
               showsVerticalScrollIndicator={false}
             >
-              {availableCategories.map((category) => (
-                <Pressable
-                  key={category.id}
-                  onPress={() => {
-                    toggleCategory(category.id);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }}
-                  style={({ pressed }) => [
-                    styles.categoryListItem,
-                    {
-                      backgroundColor: pressed
-                        ? colors.accentLight
-                        : selectedCategories.includes(category.id)
-                        ? colors.accentLight
-                        : colors.cardBackground,
-                      borderColor: pressed
-                        ? colors.accent
-                        : selectedCategories.includes(category.id)
-                        ? colors.accent
-                        : colors.border,
-                      borderWidth: selectedCategories.includes(category.id) || pressed ? 2 : 1,
-                      opacity: category.locked ? 0.5 : 1,
-                      transform: [{ scale: pressed ? 0.98 : 1 }],
-                      shadowColor: pressed ? colors.accent : 'transparent',
-                      shadowOffset: { width: 0, height: pressed ? 2 : 0 },
-                      shadowOpacity: pressed ? 0.15 : 0,
-                      shadowRadius: pressed ? 3 : 0,
-                      elevation: pressed ? 2 : 0,
-                    },
-                  ]}
-                  disabled={category.locked}
-                >
-                  <View style={styles.categoryListItemContent}>
-                    <View style={styles.categoryListItemLeft}>
-                      {selectedCategories.includes(category.id) && (
-                        <View style={[styles.checkIconSmall, { backgroundColor: colors.accent }]}>
-                          <Text style={styles.checkText}>✓</Text>
-                        </View>
-                      )}
-                      <View style={styles.categoryListItemText}>
-                        <View style={styles.categoryListItemHeader}>
-                          <Text
-                            style={[
-                              styles.categoryListItemName,
+              {/* Popular Categories Section */}
+              {(() => {
+                const popularCategoryIds = ['msa', 'prophets', 'ramadan'];
+                const popularCategories = popularCategoryIds
+                  .map(id => availableCategories.find(cat => cat.id === id))
+                  .filter((cat): cat is Category => cat !== undefined);
+                const otherCategories = availableCategories.filter(cat => !popularCategoryIds.includes(cat.id));
+                
+                return (
+                  <>
+                    {popularCategories.length > 0 && (
+                      <>
+                        <Text style={[styles.popularSectionTitle, { color: colors.text }]}>
+                          Popular Categories
+                        </Text>
+                        {popularCategories.map((category) => (
+                          <Pressable
+                            key={category.id}
+                            onPress={() => {
+                              toggleCategory(category.id);
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            }}
+                            style={({ pressed }) => [
+                              styles.categoryListItem,
                               {
-                                color: selectedCategories.includes(category.id)
+                                backgroundColor: pressed
+                                  ? colors.accentLight
+                                  : selectedCategories.includes(category.id)
+                                  ? colors.accentLight
+                                  : colors.cardBackground,
+                                borderColor: pressed
                                   ? colors.accent
-                                  : colors.text,
-                                fontWeight: selectedCategories.includes(category.id)
-                                  ? '700'
-                                  : '600',
+                                  : selectedCategories.includes(category.id)
+                                  ? colors.accent
+                                  : colors.border,
+                                borderWidth: selectedCategories.includes(category.id) || pressed ? 2 : 1,
+                                transform: [{ scale: pressed ? 0.98 : 1 }],
+                                shadowColor: pressed ? colors.accent : 'transparent',
+                                shadowOffset: { width: 0, height: pressed ? 2 : 0 },
+                                shadowOpacity: pressed ? 0.15 : 0,
+                                shadowRadius: pressed ? 3 : 0,
+                                elevation: pressed ? 2 : 0,
                               },
                             ]}
                           >
-                            {category.name}
-                          </Text>
-                          {featuredCategoryIds.includes(category.id) && (
-                            <View style={[styles.featuredBadgeSmall, { backgroundColor: colors.accentLight }]}>
-                              <Text style={[styles.featuredTextSmall, { color: colors.accent }]}>⭐</Text>
+                            <View style={styles.categoryListItemContent}>
+                              <View style={styles.categoryListItemLeft}>
+                                {selectedCategories.includes(category.id) && (
+                                  <View style={[styles.checkIconSmall, { backgroundColor: colors.accent }]}>
+                                    <Text style={styles.checkText}>✓</Text>
+                                  </View>
+                                )}
+                                <View style={styles.categoryListItemText}>
+                                  <View style={styles.categoryListItemHeader}>
+                                    <Text style={[styles.categoryListItemName, { color: colors.text }]}>
+                                      {category.name}
+                                    </Text>
+                                    {category.locked && (
+                                      <Text style={[styles.lockIconSmall, { color: colors.textSecondary }]}>🔒</Text>
+                                    )}
+                                  </View>
+                                  <Text style={[styles.categoryListItemDescription, { color: colors.textSecondary }]}>
+                                    {category.description}
+                                  </Text>
+                                  <Text style={[styles.categoryListItemExamples, { color: colors.textSecondary }]}>
+                                    {category.words.slice(0, 3).join(', ')}
+                                    {category.words.length > 3 && '...'}
+                                  </Text>
+                                </View>
+                              </View>
                             </View>
-                          )}
-                          {(category.id === 'muslim-coffee' || category.id === 'local-halal') && (
-                            <View style={[styles.locationBadge, { backgroundColor: colors.accentLight }]}>
-                              <Text style={[styles.locationBadgeText, { color: colors.accent }]}>📍</Text>
+                          </Pressable>
+                        ))}
+                        <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
+                      </>
+                    )}
+                    {otherCategories.map((category) => (
+                      <Pressable
+                        key={category.id}
+                        onPress={() => {
+                          toggleCategory(category.id);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                        style={({ pressed }) => [
+                          styles.categoryListItem,
+                          {
+                            backgroundColor: pressed
+                              ? colors.accentLight
+                              : selectedCategories.includes(category.id)
+                              ? colors.accentLight
+                              : colors.cardBackground,
+                            borderColor: pressed
+                              ? colors.accent
+                              : selectedCategories.includes(category.id)
+                              ? colors.accent
+                              : colors.border,
+                            borderWidth: selectedCategories.includes(category.id) || pressed ? 2 : 1,
+                            transform: [{ scale: pressed ? 0.98 : 1 }],
+                            shadowColor: pressed ? colors.accent : 'transparent',
+                            shadowOffset: { width: 0, height: pressed ? 2 : 0 },
+                            shadowOpacity: pressed ? 0.15 : 0,
+                            shadowRadius: pressed ? 3 : 0,
+                            elevation: pressed ? 2 : 0,
+                          },
+                        ]}
+                        disabled={category.locked}
+                      >
+                        <View style={styles.categoryListItemContent}>
+                          <View style={styles.categoryListItemLeft}>
+                            {selectedCategories.includes(category.id) && (
+                              <View style={[styles.checkIconSmall, { backgroundColor: colors.accent }]}>
+                                <Text style={styles.checkText}>✓</Text>
+                              </View>
+                            )}
+                            <View style={styles.categoryListItemText}>
+                              <View style={styles.categoryListItemHeader}>
+                                <Text
+                                  style={[
+                                    styles.categoryListItemName,
+                                    {
+                                      color: selectedCategories.includes(category.id)
+                                        ? colors.accent
+                                        : colors.text,
+                                      fontWeight: selectedCategories.includes(category.id)
+                                        ? '700'
+                                        : '600',
+                                    },
+                                  ]}
+                                >
+                                  {category.name}
+                                </Text>
+                              </View>
+                              <Text
+                                style={[styles.categoryListItemDescription, { color: colors.textSecondary }]}
+                              >
+                                {category.description}
+                              </Text>
+                              {category.words.length > 0 ? (
+                                <Text
+                                  style={[styles.categoryListItemExamples, { color: colors.textSecondary }]}
+                                >
+                                  Examples: {category.words.slice(0, 4).join(', ')}
+                                  {category.words.length > 4 && '...'}
+                                </Text>
+                              ) : null}
                             </View>
-                          )}
-                          {category.locked && (
-                            <Text style={styles.lockIconSmall}>🔒</Text>
-                          )}
+                          </View>
                         </View>
-                        <Text
-                          style={[styles.categoryListItemDescription, { color: colors.textSecondary }]}
-                        >
-                          {category.description}
-                        </Text>
-                        {(category.id === 'muslim-coffee' || category.id === 'local-halal') && category.words.length === 0 ? (
-                          <Text
-                            style={[styles.categoryListItemExamples, { color: colors.accent, fontStyle: 'italic' }]}
-                          >
-                            📍 Tap to enable location and find nearby places
-                          </Text>
-                        ) : category.words.length > 0 ? (
-                          <Text
-                            style={[styles.categoryListItemExamples, { color: colors.textSecondary }]}
-                          >
-                            Examples: {category.words.slice(0, 4).join(', ')}
-                            {category.words.length > 4 && '...'}
-                          </Text>
-                        ) : null}
-                      </View>
-                    </View>
-                  </View>
-                </Pressable>
-              ))}
+                      </Pressable>
+                    ))}
+                  </>
+                );
+              })()}
             </ScrollView>
           </View>
         </View>
-      </Modal>
-
-      {/* Location Permission Modal */}
-      <Modal
-        visible={showLocationModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowLocationModal(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowLocationModal(false)}
-        >
-          <Card
-            style={styles.modalContent}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={styles.modalHeaderRow}>
-              <Text style={[styles.modalTitle, { color: colors.text, flex: 1, marginBottom: 0 }]} numberOfLines={1}>
-                Enable Location 📍
-              </Text>
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setShowLocationModal(false);
-                  setLocationCategoryType(null);
-                  setIsLoadingLocation(false);
-                }}
-                style={({ pressed }) => [
-                  styles.modalCloseBtn,
-                  { backgroundColor: colors.border, opacity: pressed ? 0.6 : 1 },
-                ]}
-              >
-                <Text style={[styles.modalCloseBtnText, { color: colors.text }]}>✕</Text>
-              </Pressable>
-            </View>
-            <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
-              To use {locationCategoryType === 'coffee' ? 'Muslim Coffee Shops' : 'Local Halal Spots'}, we need to find nearby businesses near you.
-            </Text>
-            <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.md }]}>
-              We'll search within 50 miles and show you the highest-rated places sorted by reviews. This makes your game personalized to your area!
-            </Text>
-            <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.md, fontSize: 12 }]}>
-              Your location is only used to find nearby businesses. We don't store or share your location data.
-            </Text>
-            {isLoadingLocation && (
-              <View style={styles.loadingContainer}>
-                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-                  Searching for nearby places...
-                </Text>
-                <Text style={[styles.loadingSubtext, { color: colors.textSecondary }]}>
-                  This may take a few seconds
-                </Text>
-              </View>
-            )}
-            <View style={styles.modalButtonRow}>
-              <Button
-                title="Cancel"
-                onPress={() => {
-                  setShowLocationModal(false);
-                  setLocationCategoryType(null);
-                  setIsLoadingLocation(false);
-                }}
-                variant="secondary"
-                style={[styles.modalButtonCompact, { marginRight: spacing.sm }]}
-                disabled={isLoadingLocation}
-              />
-              <Button
-                title={isLoadingLocation ? "Loading..." : "Enable Location"}
-                onPress={handleLocationPermissionRequest}
-                disabled={isLoadingLocation}
-                style={styles.modalButtonCompact}
-              />
-            </View>
-          </Card>
-        </Pressable>
       </Modal>
 
       {/* Info Modal */}
@@ -1188,13 +1510,13 @@ export default function GameSetupScreen() {
             onPress={(e) => e.stopPropagation()}
           >
             {infoModal && (
-              <>
-                <View style={styles.modalHeaderRow}>
+              <View>
+                <View style={[styles.modalHeaderRow, { padding: spacing.lg, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
                   <Text style={[styles.modalTitle, { color: colors.text, flex: 1, marginBottom: 0 }]} numberOfLines={1}>
                     {infoModal === 'blind' && 'Blind Imposter'}
                     {infoModal === 'double' && 'Double Agent'}
                     {infoModal === 'word' && 'Word + Clue Mode'}
-                    {infoModal === 'question' && 'Question Mode'}
+                    {infoModal === 'quiz' && 'Quiz/Questions Mode'}
                   </Text>
                   <Pressable
                     onPress={() => {
@@ -1209,61 +1531,123 @@ export default function GameSetupScreen() {
                     <Text style={[styles.modalCloseBtnText, { color: colors.text }]}>✕</Text>
                   </Pressable>
                 </View>
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.infoModalScrollContent}
-                >
+                <View style={styles.infoModalScrollContent}>
                   {infoModal === 'blind' && (
                     <>
-                      <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
-                        When enabled, the imposter will only see "IMPOSTER" on their card - they won't see the category or any hints.
+                      <View style={[styles.modalSection, { backgroundColor: colors.accentLight + '30', borderLeftWidth: 3, borderLeftColor: colors.accent, paddingLeft: spacing.sm, marginBottom: spacing.sm }]}>
+                        <Text style={[styles.modalDescription, { color: colors.text, fontWeight: '600', marginBottom: spacing.xs }]}>
+                          What it does:
+                        </Text>
+                        <Text style={[styles.modalDescription, { color: colors.text }]}>
+                          When enabled, the imposter will only see "IMPOSTER" on their card - they won't see the category or any hints about the secret word.
+                        </Text>
+                      </View>
+                      <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.sm }]}>
+                        This makes the game more challenging as the imposter must bluff without knowing which category the word belongs to. They have to guess based on the clues or questions given by other players.
                       </Text>
-                      <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.md }]}>
-                        This makes the game more challenging as the imposter must bluff without knowing which category the word belongs to.
+                      <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.xs }]}>
+                        Normal players will still see the secret word and category on their cards, so they can give accurate clues or answers.
                       </Text>
                     </>
                   )}
                   {infoModal === 'double' && (
                     <>
-                      <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
-                        One player (chosen randomly) will see the secret word on their card, but they are NOT an imposter.
+                      <View style={[styles.modalSection, { backgroundColor: colors.accentLight + '30', borderLeftWidth: 3, borderLeftColor: colors.accent, paddingLeft: spacing.sm, marginBottom: spacing.sm }]}>
+                        <Text style={[styles.modalDescription, { color: colors.text, fontWeight: '600', marginBottom: spacing.xs }]}>
+                          What it is:
+                        </Text>
+                        <Text style={[styles.modalDescription, { color: colors.text }]}>
+                          One player (chosen randomly) will see the secret word on their card, but they are NOT an imposter. This player is called the "Double Agent".
+                        </Text>
+                      </View>
+                      <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.sm }]}>
+                        The Double Agent knows the word, so they can give accurate clues or answers. However, their goal is to survive without being voted out, while making it seem like they might be the imposter.
                       </Text>
-                      <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.md }]}>
-                        The Double Agent wins if they survive without being voted out. Neither the imposters nor the other players know who the Double Agent is.
+                      <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.xs }]}>
+                        Neither the imposters nor the other normal players know who the Double Agent is. This adds an extra layer of strategy and deception to the game!
                       </Text>
-                      <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.md }]}>
-                        This adds an extra layer of strategy and deception to the game!
-                      </Text>
+                      <View style={[styles.modalSection, { backgroundColor: colors.accentLight + '20', padding: spacing.sm, borderRadius: 8, marginTop: spacing.sm }]}>
+                        <Text style={[styles.modalDescription, { color: colors.text, fontWeight: '600', marginBottom: spacing.xs / 2 }]}>
+                          Victory Condition:
+                        </Text>
+                        <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
+                          The Double Agent wins if they survive the voting round. If they're voted out, the normal players and imposters continue playing as usual.
+                        </Text>
+                      </View>
                     </>
                   )}
                   {infoModal === 'word' && (
                     <>
-                      <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
-                        Players take turns giving ONE clue word related to the secret word. The clue must be a single word (not a phrase or sentence).
+                      <Text style={[styles.modalDescription, { color: colors.text, marginBottom: spacing.sm }]}>
+                        In Word + Clue mode, players take turns giving ONE clue word related to the secret word. The clue must be a single word (not a phrase or sentence).
                       </Text>
-                      <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.md }]}>
-                        <Text style={{ fontWeight: '600' }}>Example:</Text> If the secret word is "Masjid", players might give clues like "Prayer", "Dome", "Friday", "Community", etc.
+                      <View style={[styles.modalSection, { backgroundColor: colors.accentLight + '20', padding: spacing.sm, borderRadius: 8, marginBottom: spacing.sm }]}>
+                        <Text style={[styles.modalDescription, { color: colors.accent, fontWeight: '700', marginBottom: spacing.xs }]}>
+                          How to play:
+                        </Text>
+                        <Text style={[styles.modalDescription, { color: colors.text }]}>
+                          Starting with the first player, each person gives one clue word. Go around the group until everyone has given a clue.
+                        </Text>
+                      </View>
+                      <View style={[styles.modalSection, { backgroundColor: colors.accentLight + '20', padding: spacing.sm, borderRadius: 8, marginBottom: spacing.sm }]}>
+                        <Text style={[styles.modalDescription, { color: colors.accent, fontWeight: '700', marginBottom: spacing.xs }]}>
+                          Example:
+                        </Text>
+                        <Text style={[styles.modalDescription, { color: colors.text }]}>
+                          If the secret word is "Masjid", players might give clues like "Prayer", "Dome", "Friday", "Community", etc.
+                        </Text>
+                      </View>
+                      <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.xs }]}>
+                        After all players have given their clues, the group discusses and votes IN PERSON to identify the imposter(s). The imposter tries to blend in without knowing the word, so their clues might be vague or off-topic.
                       </Text>
-                      <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.md }]}>
-                        After all players have given their clues, the group discusses and votes to identify the imposter(s). The imposter tries to blend in without knowing the word.
+                      <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.xs }]}>
+                        Normal players see the secret word on their card, so they can give accurate clues. The imposter only sees "IMPOSTER" (or nothing if Blind Imposter mode is on).
                       </Text>
                     </>
                   )}
-                  {infoModal === 'question' && (
+                  {infoModal === 'quiz' && (
                     <>
-                      <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
-                        Players ask and answer questions about the secret word. One player asks a question, and the next player must answer it truthfully (if they know the word) or bluff (if they're the imposter).
+                      <Text style={[styles.modalDescription, { color: colors.text, marginBottom: spacing.sm }]}>
+                        In Quiz mode, players are first given a question. They determine the answer, and that answer becomes the secret word. Then players give clues based on that word.
                       </Text>
-                      <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.md }]}>
-                        <Text style={{ fontWeight: '600' }}>Example:</Text> If the secret word is "Ramadan", questions might be "What month is this?" or "What do people do during this time?" Players answer verbally.
-                      </Text>
-                      <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.md }]}>
-                        This mode encourages more conversation and interaction. After the Q&A round, players vote on who they think is the imposter.
+                      <View style={[styles.modalSection, { backgroundColor: colors.accentLight + '20', padding: spacing.sm, borderRadius: 8, marginBottom: spacing.sm }]}>
+                        <Text style={[styles.modalDescription, { color: colors.accent, fontWeight: '700', marginBottom: spacing.xs }]}>
+                          How to play:
+                        </Text>
+                        <Text style={[styles.modalDescription, { color: colors.text }]}>
+                          1. All players see a question (e.g., "First wife of the Prophet ﷺ")
+                        </Text>
+                        <Text style={[styles.modalDescription, { color: colors.text }]}>
+                          2. Players determine the answer (e.g., "Khadija")
+                        </Text>
+                        <Text style={[styles.modalDescription, { color: colors.text }]}>
+                          3. The answer becomes the secret word
+                        </Text>
+                        <Text style={[styles.modalDescription, { color: colors.text }]}>
+                          4. Players then give clues about that word (e.g., "businesswoman", "first believer", etc.)
+                        </Text>
+                      </View>
+                      <View style={[styles.modalSection, { backgroundColor: colors.accentLight + '20', padding: spacing.sm, borderRadius: 8, marginBottom: spacing.sm }]}>
+                        <Text style={[styles.modalDescription, { color: colors.accent, fontWeight: '700', marginBottom: spacing.xs }]}>
+                          Example:
+                        </Text>
+                        <Text style={[styles.modalDescription, { color: colors.text }]}>
+                          Question: "Country with most Muslims"
+                        </Text>
+                        <Text style={[styles.modalDescription, { color: colors.text }]}>
+                          Answer: "Indonesia" (becomes the secret word)
+                        </Text>
+                        <Text style={[styles.modalDescription, { color: colors.text }]}>
+                          Clues: "Archipelago", "Jakarta", "Southeast Asia", etc.
+                        </Text>
+                      </View>
+                      <Text style={[styles.modalDescription, { color: colors.textSecondary, marginTop: spacing.xs }]}>
+                        The imposter doesn't know the answer, so they must guess and give clues based on their guess. After clues, players vote on who they think is the imposter.
                       </Text>
                     </>
                   )}
-                </ScrollView>
-              </>
+                </View>
+              </View>
             )}
           </Card>
         </Pressable>
@@ -1279,6 +1663,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
+    width: '100%',
   },
   headerContainer: {
     marginBottom: spacing.lg,
@@ -1400,30 +1785,102 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modeOption: {
-    width: '100%',
-    paddingVertical: spacing.lg,
+    minWidth: 0,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
-    borderRadius: 16,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 56,
+    minHeight: 80,
+    position: 'relative',
   },
   modeText: {
     ...typography.body,
     fontSize: 15,
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
+    textAlign: 'center',
+    fontWeight: '600',
   },
-  modeInfoButton: {
-    marginTop: spacing.xs,
+  difficultyContent: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs / 2,
   },
-  modeInfoIcon: {
-    width: 24, // Increased for better accessibility
-    height: 24,
+  difficultyIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  difficultyDropdown: {
+    borderWidth: 1,
     borderRadius: 12,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    minHeight: 56,
+    justifyContent: 'center',
+  },
+  difficultyDropdownContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  difficultyDropdownText: {
+    ...typography.body,
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+  },
+  difficultyModalContent: {
+    borderRadius: 16,
+    padding: spacing.md,
+    width: '100%',
+    maxWidth: 400,
+    gap: spacing.xs,
+  },
+  difficultyModalOption: {
+    borderRadius: 12,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    minHeight: 56,
+  },
+  difficultyModalOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  difficultyModalOptionText: {
+    ...typography.body,
+    fontSize: 16,
+    flex: 1,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  readMoreButtonInBox: {
+    position: 'absolute',
+    top: 2,
+    right: 0,
+    padding: spacing.xs / 2,
+    minWidth: 32,
+    minHeight: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 44, // iOS accessibility minimum
-    minHeight: 44,
+    zIndex: 10,
+  },
+  readMoreButtonInline: {
+    padding: spacing.xs / 2,
+    marginLeft: spacing.xs,
+    minWidth: 32,
+    minHeight: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   toggleContainer: {
     gap: spacing.md,
@@ -1433,6 +1890,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: spacing.sm,
+    position: 'relative',
   },
   toggleLabelContainer: {
     flex: 1,
@@ -1453,23 +1911,27 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
   infoIcon: {
-    width: 24, // Increased for better accessibility
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'transparent',
     minWidth: 44, // iOS accessibility minimum
     minHeight: 44,
+    padding: 12, // Extra padding for touch target
   },
   infoIconText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    fontStyle: 'italic',
+    fontStyle: 'normal',
   },
   toggleDescription: {
     ...typography.caption,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: spacing.xs,
   },
   toggle: {
     width: 48,
@@ -1592,39 +2054,125 @@ const styles = StyleSheet.create({
   },
   nameInputContainer: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  nameInputFieldWrapper: {
+    flex: 1,
     position: 'relative',
   },
   nameInput: {
     width: '100%',
-    height: 48, // Already meets 44pt minimum
+    height: 48,
     borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: spacing.md,
     ...typography.body,
-    fontSize: 16, // Standard body size
+    fontSize: 16,
     minHeight: 44,
+    paddingVertical: spacing.sm,
+    textAlignVertical: 'center',
+    lineHeight: 20,
   },
   clearButton: {
-    position: 'absolute',
-    right: spacing.xs,
-    top: '50%',
-    transform: [{ translateY: -22 }], // Adjusted for larger button
-    zIndex: 1,
-    padding: spacing.xs, // Added padding for larger touch target
-  },
-  clearButtonIcon: {
-    width: 32, // Increased for better touch target
-    height: 32,
-    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 44, // iOS accessibility minimum
-    minHeight: 44,
+    padding: spacing.xs,
+    minWidth: 36,
+    minHeight: 36,
+  },
+  clearButtonIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   clearButtonText: {
     fontSize: 20,
     fontWeight: '600',
     lineHeight: 20,
+  },
+  deliveryMethodContainer: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  deliveryMethodOption: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 80,
+  },
+  deliveryMethodIconText: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  deliveryMethodText: {
+    ...typography.bodyBold,
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  deliveryMethodSubtext: {
+    ...typography.caption,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  contactButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  contactButtonText: {
+    fontSize: 24,
+  },
+  contactListContainer: {
+    flex: 1,
+    marginTop: spacing.md,
+  },
+  contactItem: {
+    padding: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: spacing.sm,
+  },
+  contactItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  contactItemIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contactItemIconText: {
+    ...typography.bodyBold,
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  contactItemText: {
+    flex: 1,
+  },
+  contactItemName: {
+    ...typography.bodyBold,
+    fontSize: 16,
+    marginBottom: spacing.xs / 2,
+  },
+  contactItemPhone: {
+    ...typography.body,
+    fontSize: 14,
   },
   startButton: {
     marginTop: spacing.md,
@@ -1640,16 +2188,23 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '100%',
     maxWidth: 400,
+    maxHeight: '85%',
     padding: spacing.xl,
+    overflow: 'hidden',
+  },
+  modalScrollContent: {
+    paddingBottom: spacing.sm,
   },
   infoModalContent: {
     width: '100%',
     maxWidth: 380,
-    maxHeight: '80%',
-    padding: spacing.lg,
+    padding: 0,
+    overflow: 'hidden',
   },
   infoModalScrollContent: {
-    paddingBottom: spacing.sm,
+    padding: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
   },
   modalHeaderRow: {
     flexDirection: 'row',
@@ -1679,9 +2234,12 @@ const styles = StyleSheet.create({
   },
   modalDescription: {
     ...typography.body,
-    fontSize: 15, // Slightly larger for better readability
-    lineHeight: 22, // Improved line height
-    marginBottom: spacing.md, // Increased spacing
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: spacing.xs,
+  },
+  modalSection: {
+    marginBottom: spacing.xs,
   },
   modalExamples: {
     ...typography.caption,
@@ -1691,11 +2249,18 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 44, // iOS accessibility minimum
     paddingVertical: spacing.md, // Increased for better touch target
+    paddingHorizontal: spacing.sm, // Ensure horizontal padding
+    minWidth: 0, // Allow flex to shrink if needed
   },
   modalButtonRow: {
     flexDirection: 'row',
     gap: spacing.sm,
     marginTop: spacing.md,
+    width: '100%',
+  },
+  modalButtonWrapper: {
+    flex: 1,
+    minWidth: 0, // Allow flex to shrink if needed
   },
   loadingContainer: {
     alignItems: 'center',
@@ -1797,13 +2362,16 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     opacity: 0.8,
   },
-  locationBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginLeft: spacing.xs,
+  popularSectionTitle: {
+    ...typography.heading,
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: spacing.md,
+    marginTop: spacing.sm,
   },
-  locationBadgeText: {
-    fontSize: 12,
+  sectionDivider: {
+    height: 1,
+    marginVertical: spacing.lg,
+    opacity: 0.3,
   },
 });
