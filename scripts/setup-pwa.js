@@ -40,9 +40,44 @@ if (!fs.existsSync(manifestPath)) {
   console.log('✓ Manifest.json created');
 }
 
-// Update index.html to include manifest and PWA meta tags
+// Update index.html to include manifest and PWA meta tags, and fix scrolling
 if (fs.existsSync(indexHtmlPath)) {
   let html = fs.readFileSync(indexHtmlPath, 'utf8');
+  
+  // Replace the entire style block with fixed version that supports scrolling
+  const fixedStyles = `    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+        height: 100%;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+        overflow: hidden;
+      }
+      /* Fix for ScrollView on web - ensure ScrollView components are scrollable */
+      [data-scrollview="true"],
+      div[style*="overflow-y"],
+      .r-scrollview,
+      [class*="ScrollView"] {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        height: 100%;
+      }
+    </style>`;
+  
+  // Replace the style block
+  html = html.replace(/<style id="expo-reset">[\s\S]*?<\/style>/, fixedStyles);
   
   // Check if manifest link already exists
   if (!html.includes('rel="manifest"')) {
@@ -51,9 +86,10 @@ if (fs.existsSync(indexHtmlPath)) {
       /<link rel="shortcut icon"[^>]*>/,
       `$&\n<link rel="manifest" href="/manifest.json" />\n<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="apple-mobile-web-app-status-bar-style" content="default">\n<meta name="apple-mobile-web-app-title" content="Khafī">`
     );
-    fs.writeFileSync(indexHtmlPath, html);
-    console.log('✓ index.html updated with PWA meta tags');
   }
+  
+  fs.writeFileSync(indexHtmlPath, html);
+  console.log('✓ index.html updated with PWA meta tags and scrolling fixes');
 }
 
 console.log('✓ PWA setup complete!');
