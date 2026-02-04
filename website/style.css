@@ -116,26 +116,23 @@ body {
 }
 
 .hero-logo {
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
 }
 
 .logo-img {
-    max-width: 200px;
+    max-width: 120px;
     height: auto;
-    width: 100%;
+    width: auto;
 }
 
 .hero-title {
     font-size: clamp(3rem, 8vw, 5.5rem);
     font-weight: 700;
     color: var(--color-text);
-    margin-bottom: var(--spacing-md);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-sm);
     letter-spacing: -0.03em;
     line-height: 1.1;
 }
