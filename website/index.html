@@ -4,13 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Khafī - The Islamic Hidden Word Game</title>
-    <meta name="description" content="Khafī (خفي) - A beautiful pass-and-play party game with Islamic-themed categories. Perfect for family gatherings and game nights.">
+    <meta name="description" content="Khafī (خفي) - A beautiful pass-and-play party game with Islamic-themed categories. Perfect for family gatherings and game nights. Play now in your browser!">
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <div class="nav-brand">
+                    <h2>Khafī</h2>
+                    <span class="nav-arabic">خفي</span>
+                </div>
+                <div class="nav-links">
+                    <a href="#features">Features</a>
+                    <a href="#how-it-works">How It Works</a>
+                    <a href="#play">Play Now</a>
+                    <a href="#download" class="btn-nav">Download</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
     <!-- Hero Section -->
     <section class="hero">
         <div class="container">
@@ -23,62 +41,98 @@
                     <p class="hero-subtitle">خفي</p>
                     <p class="hero-tagline">The Islamic Hidden Word Game</p>
                     <p class="hero-description">
-                        A beautiful pass-and-play party game that brings families and friends together. 
-                        Guess the imposter, share clues, and enjoy quality time with Islamic-themed categories 
-                        perfect for all ages.
+                        A fun party game for Muslims! Play the classic hidden word game with Islamic categories 
+                        and find the imposter among your friends. Perfect for family gatherings, Islamic events, 
+                        and game nights.
                     </p>
                     <div class="hero-buttons">
-                        <a href="#download" class="btn btn-primary">Coming Soon</a>
+                        <a href="#play" class="btn btn-primary">Play Now</a>
                         <a href="#features" class="btn btn-secondary">Learn More</a>
                     </div>
                     <div class="app-badges">
-                        <div class="badge">iOS</div>
+                        <div class="badge">🎮 Play in Browser</div>
+                        <div class="badge">📱 iOS App Coming Soon</div>
                     </div>
                 </div>
                 <div class="hero-image">
                     <div class="phone-mockup">
-                        <img src="screenshot-hero.png" alt="Khafī App - Card Reveal Screen" class="phone-screenshot" />
+                        <div class="phone-screen">
+                            <div class="app-preview">
+                                <div class="app-logo-preview">
+                                    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="50" cy="50" r="20" fill="#D4A574" opacity="0.8"/>
+                                        <circle cx="150" cy="50" r="20" fill="#D4A574" opacity="0.8"/>
+                                        <circle cx="50" cy="150" r="20" fill="#D4A574" opacity="0.8"/>
+                                        <circle cx="150" cy="150" r="20" fill="#D4A574" opacity="0.8"/>
+                                        <path d="M 100 80 L 100 120" stroke="#8B4513" stroke-width="3" fill="none"/>
+                                    </svg>
+                                </div>
+                                <div class="app-text-preview">
+                                    <div class="app-title-preview">Khafī</div>
+                                    <div class="app-subtitle-preview">The Islamic Hidden Word Game</div>
+                                    <div class="app-buttons-preview">
+                                        <div class="app-btn-preview primary">Get Started</div>
+                                        <div class="app-btn-preview secondary">How to Play</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="phone-frame"></div>
                     </div>
-                    <p class="hero-image-note">Actual app screenshot</p>
                 </div>
             </div>
         </div>
         <div class="pattern-overlay"></div>
     </section>
 
-    <!-- Screenshots Section -->
-    <section id="features" class="screenshots">
+    <!-- Features Section -->
+    <section id="features" class="features">
         <div class="container">
-            <div class="screenshots-content">
-                <div class="screenshot-item">
-                    <img src="screenshot-menu.png" alt="Menu Screen" class="screenshot-img" />
-                    <h3>Clean Menu</h3>
-                    <p>Start playing in seconds with an intuitive interface</p>
+            <h2 class="section-title">Features</h2>
+            <div class="features-content">
+                <div class="feature-item">
+                    <div class="feature-icon">📚</div>
+                    <h3>20+ Islamic Categories</h3>
+                    <p>Prophets, Seerah, Ramadan, Quran Concepts, Halal Foods, Masjid Life, Islamic History, and many more. All content is respectful and family-friendly.</p>
                 </div>
-                <div class="screenshot-item">
-                    <img src="screenshot-setup.png" alt="Game Setup" class="screenshot-img" />
-                    <h3>Easy Setup</h3>
-                    <p>Configure players, modes, and categories with ease</p>
+                <div class="feature-item">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Multiple Game Modes</h3>
+                    <p><strong>Word + Clue Mode:</strong> Give clues about your secret word. <strong>Quiz Mode:</strong> Answer questions about the word. <strong>Special Modes:</strong> Blind Imposter and Double Agent for extra challenge.</p>
                 </div>
-                <div class="screenshot-item">
-                    <img src="screenshot-card.png" alt="Card Reveal" class="screenshot-img" />
-                    <h3>Beautiful Cards</h3>
-                    <p>Islamic geometric patterns bring the game to life</p>
+                <div class="feature-item">
+                    <div class="feature-icon">👥</div>
+                    <h3>Pass & Play Design</h3>
+                    <p>One phone, everyone plays. Encourages real face-to-face interaction instead of everyone on their own device. Perfect for gatherings!</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">✨</div>
+                    <h3>Custom Categories</h3>
+                    <p>Create your own categories with words that matter to your family. Save traditions, inside jokes, or favorite memories.</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🎨</div>
+                    <h3>Beautiful Design</h3>
+                    <p>Warm Majlis theme with intricate Islamic geometric patterns. Clean, intuitive interface that's easy to use for all ages.</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🆓</div>
+                    <h3>All Features Free</h3>
+                    <p>All categories and features are available at no cost. No in-app purchases, no subscriptions - just pure fun!</p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- How It Works -->
-    <section class="how-it-works">
+    <section id="how-it-works" class="how-it-works">
         <div class="container">
             <h2 class="section-title">How It Works</h2>
             <div class="steps">
                 <div class="step">
                     <div class="step-number">1</div>
                     <h3>Setup</h3>
-                    <p>Choose number of players, imposters, and categories. Add player names for a personal touch.</p>
+                    <p>Choose number of players (3-20), imposters, and categories. Add player names for a personal touch.</p>
                 </div>
                 <div class="step">
                     <div class="step-number">2</div>
@@ -99,30 +153,98 @@
         </div>
     </section>
 
-    <!-- Features -->
-    <section class="features">
+    <!-- Play Now Section -->
+    <section id="play" class="play-section">
         <div class="container">
-            <div class="features-content">
-                <div class="feature-item">
-                    <h3>Pass & Play Design</h3>
-                    <p>One phone, everyone plays. Encourages real face-to-face interaction instead of everyone on their own device.</p>
+            <h2 class="section-title">Play Khafī Now</h2>
+            <p class="play-description">
+                Experience the full game right in your browser! No download required. 
+                Works on desktop, tablet, and mobile devices.
+            </p>
+            <div class="play-container">
+                <div class="play-frame-wrapper">
+                    <iframe 
+                        id="game-frame"
+                        src="/" 
+                        title="Khafī Game"
+                        class="play-frame"
+                        allow="fullscreen"
+                        loading="lazy"
+                    ></iframe>
+                    <div class="play-overlay" id="play-overlay">
+                        <div class="play-overlay-content">
+                            <h3>Ready to Play?</h3>
+                            <p>Click below to start playing Khafī in your browser</p>
+                            <button class="btn btn-primary" onclick="startGame()">Start Game</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="feature-item">
-                    <h3>Islamic Categories</h3>
-                    <p>Over 20 categories covering Prophets, Seerah, Islamic History, Ramadan, Halal Foods, Masjid Life, and much more. All content is respectful and family-friendly.</p>
+                <div class="play-info">
+                    <div class="play-info-item">
+                        <div class="play-info-icon">💡</div>
+                        <div>
+                            <h4>No Installation</h4>
+                            <p>Play directly in your browser - no app download needed</p>
+                        </div>
+                    </div>
+                    <div class="play-info-item">
+                        <div class="play-info-icon">📱</div>
+                        <div>
+                            <h4>Works Everywhere</h4>
+                            <p>Desktop, tablet, or mobile - works on any device</p>
+                        </div>
+                    </div>
+                    <div class="play-info-item">
+                        <div class="play-info-icon">⚡</div>
+                        <div>
+                            <h4>Instant Play</h4>
+                            <p>Start playing immediately - no waiting, no setup</p>
+                        </div>
+                    </div>
+                    <div class="play-info-item">
+                        <div class="play-info-icon">💾</div>
+                        <div>
+                            <h4>Save Progress</h4>
+                            <p>Your custom categories and settings are saved locally</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="feature-item">
-                    <h3>Custom Categories</h3>
-                    <p>Create your own categories with words that matter to your family. Save traditions, inside jokes, or favorite memories.</p>
-                </div>
-                <div class="feature-item">
-                    <h3>Three Game Modes</h3>
-                    <p><strong>Standard:</strong> Classic gameplay. <strong>Blind Imposter:</strong> Extra challenge. <strong>Double Agent:</strong> Strategic twist.</p>
-                </div>
-                <div class="feature-item">
-                    <h3>Beautiful Themes</h3>
-                    <p>Choose from Soft Islamic Geometry, Paper Card Texture, or Warm Majlis. Each theme includes intricate Islamic geometric patterns.</p>
-                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Categories Section -->
+    <section class="categories">
+        <div class="container">
+            <h2 class="section-title">20+ Islamic Categories</h2>
+            <p class="categories-intro">
+                Explore a wide variety of Islamic topics perfect for learning and fun!
+            </p>
+            <div class="categories-grid">
+                <div class="category-tag">Prophets (with English names)</div>
+                <div class="category-tag">Seerah Events</div>
+                <div class="category-tag">Ramadan Terms</div>
+                <div class="category-tag">Worship & Prayer</div>
+                <div class="category-tag">Halal Foods</div>
+                <div class="category-tag">Masjid Life</div>
+                <div class="category-tag">Islamic Values</div>
+                <div class="category-tag">Basic Islamic Terms</div>
+                <div class="category-tag">Islamic History</div>
+                <div class="category-tag">Islamic Months & Holidays</div>
+                <div class="category-tag">Quran Concepts</div>
+                <div class="category-tag">Family & Relationships</div>
+                <div class="category-tag">Marriage & Nikah</div>
+                <div class="category-tag">Charity & Zakat</div>
+                <div class="category-tag">Hajj & Umrah</div>
+                <div class="category-tag">Islamic Clothing</div>
+                <div class="category-tag">Companions of Prophet</div>
+                <div class="category-tag">Islamic Architecture</div>
+                <div class="category-tag">Islamic Scholars & Imams</div>
+                <div class="category-tag">Duas & Supplications</div>
+                <div class="category-tag">Islamic Etiquette (Adab)</div>
+                <div class="category-tag">Islamic Countries & Cities</div>
+                <div class="category-tag">MSA</div>
+                <div class="category-tag">And many more!</div>
             </div>
         </div>
     </section>
@@ -130,12 +252,20 @@
     <!-- Download Section -->
     <section id="download" class="download">
         <div class="container">
-            <h2 class="section-title">Coming Soon</h2>
+            <h2 class="section-title">Download the App</h2>
             <p class="download-description">
-                Khafī is currently in development. Join our waitlist to be notified when it launches!
+                Prefer the native app experience? Download Khafī from the App Store (coming soon) 
+                or play instantly in your browser above!
             </p>
             <div class="download-buttons">
-                <a href="#" class="download-btn ios">
+                <a href="#play" class="download-btn ios">
+                    <span class="download-icon">🌐</span>
+                    <span class="download-text">
+                        <span class="download-label">Play in</span>
+                        <span class="download-store">Browser</span>
+                    </span>
+                </a>
+                <a href="#" class="download-btn ios coming-soon">
                     <span class="download-icon">🍎</span>
                     <span class="download-text">
                         <span class="download-label">Download on the</span>
@@ -144,7 +274,7 @@
                 </a>
             </div>
             <p class="coming-soon-note">
-                Available soon for iOS. Free to play.
+                iOS app coming soon. Play now in your browser - it's free and works great!
             </p>
         </div>
     </section>
@@ -162,19 +292,19 @@
                     <div class="footer-section">
                         <h4>App</h4>
                         <a href="#features">Features</a>
+                        <a href="#play">Play Now</a>
                         <a href="#download">Download</a>
-                        <a href="mailto:privacy@khafi.app">Privacy Policy</a>
                     </div>
                     <div class="footer-section">
                         <h4>Support</h4>
                         <a href="mailto:support@khafi.app">Contact Us</a>
-                        <a href="#features">FAQ</a>
-                        <a href="mailto:feedback@khafi.app">Feedback</a>
+                        <a href="#how-it-works">How It Works</a>
+                        <a href="privacy-policy.html">Privacy Policy</a>
                     </div>
                     <div class="footer-section">
                         <h4>Legal</h4>
+                        <a href="privacy-policy.html">Privacy Policy</a>
                         <a href="mailto:legal@khafi.app">Terms of Service</a>
-                        <a href="mailto:privacy@khafi.app">Privacy Policy</a>
                     </div>
                 </div>
             </div>

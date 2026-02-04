@@ -47,12 +47,27 @@ document.querySelectorAll('.feature-item, .step, .screenshot-item').forEach(item
     observer.observe(item);
 });
 
+// Start game function
+function startGame() {
+    const overlay = document.getElementById('play-overlay');
+    const frame = document.getElementById('game-frame');
+    
+    if (overlay) {
+        overlay.classList.add('hidden');
+    }
+    
+    // Reload iframe to ensure fresh start
+    if (frame) {
+        frame.src = frame.src;
+    }
+}
+
 // Simple form handling for waitlist (if you add one)
 // You can integrate with a service like Mailchimp, ConvertKit, or Firebase
-document.querySelectorAll('.download-btn').forEach(btn => {
+document.querySelectorAll('.download-btn.coming-soon').forEach(btn => {
     btn.addEventListener('click', (e) => {
         e.preventDefault();
-        alert('Khafī is coming soon! Check back later or contact us to join the waitlist.');
+        alert('Khafī iOS app is coming soon! Play now in your browser above.');
     });
 });
 

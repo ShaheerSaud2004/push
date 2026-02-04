@@ -35,6 +35,12 @@ jobs:
       - name: Build PWA
         run: npm run build:web
 
+      - name: Copy website files to dist
+        run: |
+          cp -r website/* dist/
+          # Keep the PWA index.html as game.html for iframe
+          cp dist/index.html dist/game.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
