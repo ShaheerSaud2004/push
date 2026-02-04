@@ -122,9 +122,10 @@ body {
     align-items: center;
 }
 
-.hero-logo svg {
+.logo-img {
     max-width: 200px;
     height: auto;
+    width: 100%;
 }
 
 .hero-title {
