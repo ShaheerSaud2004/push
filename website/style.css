@@ -1032,6 +1032,13 @@ body {
     line-height: 1;
 }
 
+.credit-icon-img {
+    width: 2.5rem;
+    height: 2.5rem;
+    object-fit: contain;
+    display: block;
+}
+
 .credit-label {
     color: var(--color-text-secondary);
     font-weight: 500;
