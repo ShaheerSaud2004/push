@@ -115,6 +115,18 @@ body {
     animation: fadeInUp 0.8s ease-out;
 }
 
+.hero-logo {
+    margin-bottom: var(--spacing-md);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.hero-logo svg {
+    max-width: 200px;
+    height: auto;
+}
+
 .hero-title {
     font-size: clamp(3rem, 8vw, 5.5rem);
     font-weight: 700;
