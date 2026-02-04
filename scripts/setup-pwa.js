@@ -28,9 +28,9 @@ if (!fs.existsSync(manifestPath)) {
     orientation: "portrait",
     icons: [
       {
-        src: "/favicon.ico",
-        sizes: "48x48",
-        type: "image/x-icon"
+        src: "/logo.svg",
+        sizes: "any",
+        type: "image/svg+xml"
       }
     ],
     scope: "/",
@@ -91,5 +91,21 @@ if (fs.existsSync(indexHtmlPath)) {
   fs.writeFileSync(indexHtmlPath, html);
   console.log('✓ index.html updated with PWA meta tags and scrolling fixes');
 }
+
+// Copy website assets (logo, CSS, JS, images)
+const websiteDir = path.join(__dirname, '..', 'website');
+const websiteAssets = ['logo.svg', 'style.css', 'script.js'];
+const screenshotFiles = fs.readdirSync(websiteDir).filter(file => 
+  file.startsWith('Simulator Screenshot') && file.endsWith('.png')
+);
+
+[...websiteAssets, ...screenshotFiles].forEach(asset => {
+  const source = path.join(websiteDir, asset);
+  const dest = path.join(distDir, asset);
+  if (fs.existsSync(source)) {
+    fs.copyFileSync(source, dest);
+    console.log(`✓ Copied website asset: ${asset}`);
+  }
+});
 
 console.log('✓ PWA setup complete!');
