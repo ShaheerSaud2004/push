@@ -813,7 +813,19 @@ body {
 .nav-brand {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-md);
+}
+
+.nav-logo {
+    height: 40px;
+    width: auto;
+    display: block;
+}
+
+.nav-brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
 .nav-brand h2 {
