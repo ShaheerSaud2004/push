@@ -512,43 +512,6 @@ export const quizQuestions: QuizQuestion[] = [
     difficulty: 'medium',
   },
   
-  // Family & Relationships Questions
-  {
-    id: 'family-1',
-    categoryId: 'family-relationships',
-    question: 'Male parent',
-    answer: 'Father',
-    difficulty: 'easy',
-  },
-  {
-    id: 'family-2',
-    categoryId: 'family-relationships',
-    question: 'Female parent',
-    answer: 'Mother',
-    difficulty: 'easy',
-  },
-  {
-    id: 'family-3',
-    categoryId: 'family-relationships',
-    question: 'Male sibling',
-    answer: 'Brother',
-    difficulty: 'easy',
-  },
-  {
-    id: 'family-4',
-    categoryId: 'family-relationships',
-    question: 'Female sibling',
-    answer: 'Sister',
-    difficulty: 'easy',
-  },
-  {
-    id: 'family-5',
-    categoryId: 'family-relationships',
-    question: 'Islamic marriage contract',
-    answer: 'Nikah',
-    difficulty: 'medium',
-  },
-  
   // Marriage & Nikah Questions
   {
     id: 'marriage-1',
@@ -1011,12 +974,15 @@ export const quizQuestions: QuizQuestion[] = [
   },
 ];
 
-// Get random quiz question for a category
+// Get random quiz question for a category (excludeIds = session-used so we don't repeat)
 export function getRandomQuizQuestion(
   categoryId: string,
-  difficulty?: 'easy' | 'medium' | 'hard'
+  difficulty?: 'easy' | 'medium' | 'hard',
+  excludeIds: string[] = []
 ): QuizQuestion | null {
-  let availableQuestions = quizQuestions.filter(q => q.categoryId === categoryId);
+  let availableQuestions = quizQuestions.filter(
+    q => q.categoryId === categoryId && !excludeIds.includes(q.id)
+  );
   
   if (difficulty) {
     availableQuestions = availableQuestions.filter(q => q.difficulty === difficulty);

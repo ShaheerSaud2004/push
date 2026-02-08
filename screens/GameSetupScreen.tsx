@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -40,7 +40,7 @@ import {
   selectQuizQuestion,
   selectImposterQuizQuestion,
 } from '../utils/game';
-import { getSettings, getCustomCategories, getUsedWords, addUsedWord } from '../utils/storage';
+import { getSettings, getCustomCategories, getUsedWords, addUsedWord, getSessionUsedQuestionIds, addSessionUsedQuestionId } from '../utils/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GameSettings, GameMode, Category, Difficulty } from '../types';
 import { getMaxContentWidth, getResponsivePadding } from '../utils/responsive';
@@ -54,9 +54,10 @@ export default function GameSetupScreen() {
   const navigation = useNavigation<GameSetupScreenNavigationProp>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { setPlayers, setSettings } = useGame();
+  const { players, settings, setPlayers, setSettings } = useGame();
   const maxWidth = getMaxContentWidth();
   const responsivePadding = getResponsivePadding();
+  const hasInitializedFromContext = useRef(false);
 
   const [numPlayers, setNumPlayers] = useState(3);
   const [numImposters, setNumImposters] = useState(1);
@@ -76,8 +77,33 @@ export default function GameSetupScreen() {
   const [nameInputModalIndex, setNameInputModalIndex] = useState<number | null>(null);
   const [tempNameInput, setTempNameInput] = useState('');
 
-  // Clear selected categories when difficulty changes
+  // Pre-fill form from existing game when coming from "New Game" (so player count etc. are preserved)
   useEffect(() => {
+    if (hasInitializedFromContext.current || !players.length || !settings) return;
+    hasInitializedFromContext.current = true;
+    setNumPlayers(players.length);
+    setNumImposters(settings.numImposters);
+    setMode(settings.mode);
+    setBlindImposter(settings.specialModes.blindImposter);
+    setDoubleAgent(settings.specialModes.doubleAgent);
+    setSelectedCategories(settings.selectedCategories ?? []);
+    setShowHintToImposter(settings.showHintToImposter);
+    setDifficulty(settings.difficulty ?? 'all');
+  }, [players.length, settings]);
+
+  // Restore player names after numPlayers sync (runs after the pad/trim effect)
+  useEffect(() => {
+    if (!hasInitializedFromContext.current || !players.length || !settings || numPlayers !== players.length) return;
+    const names = settings.playerNames ?? players.map(p => p.name);
+    if (names.length === numPlayers) {
+      setPlayerNames(names);
+    }
+    hasInitializedFromContext.current = false;
+  }, [numPlayers, players.length, settings]);
+
+  // Clear selected categories when difficulty changes (skip when restoring from context)
+  useEffect(() => {
+    if (hasInitializedFromContext.current) return;
     setSelectedCategories([]);
   }, [difficulty]);
 
@@ -243,18 +269,24 @@ export default function GameSetupScreen() {
     let imposterQuizQuestion: string | undefined;
     
     if (mode === 'quiz') {
-      // Get a quiz question for this category
+      // Get a quiz question for this category (exclude session-used so we don't repeat)
       const { getRandomQuizQuestion } = require('../data/quizQuestions');
-      const normalQuestion = getRandomQuizQuestion(secretCategoryId, difficulty === 'all' ? undefined : difficulty);
+      const usedQuestionIds = getSessionUsedQuestionIds();
+      const normalQuestion = getRandomQuizQuestion(
+        secretCategoryId,
+        difficulty === 'all' ? undefined : difficulty,
+        usedQuestionIds
+      );
       
       if (!normalQuestion) {
         showAlert({ 
           title: 'No Quiz Questions', 
-          message: 'No quiz questions available for this category. Please select a different category or use Word + Clue mode.' 
+          message: 'No quiz questions available for this category (or all have been used this session). Try another category or use Word + Clue mode.' 
         });
         return;
       }
       
+      addSessionUsedQuestionId(normalQuestion.id);
       quizQuestion = normalQuestion.question;
       secretWord = normalQuestion.answer; // The answer becomes the secret word
       
@@ -485,7 +517,7 @@ export default function GameSetupScreen() {
                 Enter names for each player (optional)
               </Text>
               <View style={styles.nameInputsContainer}>
-                {playerNames.map((name, index) => (
+                {Array.from({ length: numPlayers }, (_, index) => ({ index, name: playerNames[index] ?? '' })).map(({ index, name }) => (
                   <Animated.View
                     key={index}
                     entering={FadeIn.delay(175 + index * 30)}

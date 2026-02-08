@@ -1030,6 +1030,10 @@ body {
     font-size: 2.5rem;
     margin-bottom: var(--spacing-sm);
     line-height: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 2.5rem;
 }
 
 .credit-icon-img {
@@ -1037,6 +1041,19 @@ body {
     height: 2.5rem;
     object-fit: contain;
     display: block;
+}
+
+.credit-icon-initial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: var(--color-accent-light, #e8ddd0);
+    color: var(--color-primary, #5c4033);
+    font-weight: 700;
+    font-size: 1.125rem;
 }
 
 .credit-label {

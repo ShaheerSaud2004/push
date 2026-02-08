@@ -25,23 +25,21 @@ export default function RoundInstructionsScreen() {
   const navigation = useNavigation<RoundInstructionsScreenNavigationProp>();
   const { colors } = useTheme();
   const { players, settings } = useGame();
-  
-  if (!settings || players.length === 0) {
-    return null;
-  }
 
   const handleContinue = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    // For quiz mode, navigate to answer screen; otherwise go to reveal
     if (settings.mode === 'quiz') {
       navigation.navigate('QuizAnswer');
     } else {
-      navigation.navigate('Reveal');
+      navigation.navigate('VotingTimer');
     }
   };
 
   const startingPlayer = players.find(p => p.id === settings.startingPlayerId) || players[0];
   
+  if (!settings || players.length === 0) {
+    return null;
+  }
   if (!startingPlayer) {
     return null;
   }
@@ -178,7 +176,7 @@ export default function RoundInstructionsScreen() {
           <Animated.View entering={FadeIn.delay(500)} style={styles.buttonContainer}>
             <View style={styles.buttonWrapper}>
               <Button
-                title={settings.mode === 'quiz' ? "Start Answering Questions →" : "Reveal When Ready ✨"}
+                title={settings.mode === 'quiz' ? "Start Answering Questions →" : "Proceed to Timer →"}
                 onPress={handleContinue}
                 style={styles.button}
                 textStyle={styles.buttonText}

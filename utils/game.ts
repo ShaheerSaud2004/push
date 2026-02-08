@@ -8,24 +8,42 @@ export const generatePlayerNames = (count: number): string[] => {
   return names;
 };
 
+/** Voting/discussion time in seconds: dynamic by player count (base + per player), clamped 60–300 */
+export const getVotingTimeSeconds = (numPlayers: number): number => {
+  const base = 45;
+  const perPlayer = 15;
+  const total = base + perPlayer * numPlayers;
+  return Math.min(300, Math.max(60, total));
+};
+
 export const createPlayers = (
   numPlayers: number,
   numImposters: number,
   hasDoubleAgent: boolean,
   startingPlayerId: string,
-  playerNames: string[] = []
+  playerNames: string[] = [],
+  excludeImposterIds: string[] = []
 ): Player[] => {
   const players: Player[] = [];
   const indices = Array.from({ length: numPlayers }, (_, i) => i);
-  
-  // Shuffle indices
-  for (let i = indices.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [indices[i], indices[j]] = [indices[j], indices[i]];
-  }
+  const excludeIndices = new Set(
+    excludeImposterIds
+      .map(id => parseInt(id.replace('player-', ''), 10))
+      .filter(n => !Number.isNaN(n) && n >= 0 && n < numPlayers)
+  );
+  const nonExcludedIndices = indices.filter(i => !excludeIndices.has(i));
+  const canExclude = excludeIndices.size > 0 && nonExcludedIndices.length >= numImposters;
+  const pool = canExclude ? [...nonExcludedIndices] : [...indices];
 
-  const imposterIndices = indices.slice(0, numImposters);
-  const remainingIndices = indices.slice(numImposters);
+  // Pick numImposters from pool at random (always different people when canExclude)
+  const imposterIndices: number[] = [];
+  const remaining = [...pool];
+  for (let n = 0; n < numImposters && remaining.length > 0; n++) {
+    const idx = Math.floor(Math.random() * remaining.length);
+    imposterIndices.push(remaining[idx]);
+    remaining.splice(idx, 1);
+  }
+  const remainingIndices = indices.filter(i => !imposterIndices.includes(i));
   
   // Determine double agent index if enabled
   let doubleAgentIndex: number | null = null;
@@ -75,17 +93,44 @@ export const selectRandomWord = (words: string[], usedWords: string[] = []): str
   return availableWords[Math.floor(Math.random() * availableWords.length)];
 };
 
-export const selectRandomCategory = (categoryIds: string[], categories: Category[]): string => {
-  const availableCategories = categoryIds.filter(id => {
+export const selectRandomCategory = (
+  categoryIds: string[],
+  categories: Category[],
+  excludeCategoryId?: string
+): string => {
+  let availableCategories = categoryIds.filter(id => {
     const cat = categories.find(c => c.id === id);
     return cat && (!cat.locked || cat.isCustom) && cat.words.length > 0;
   });
-  
+  // When possible, pick a different category from the last round
+  if (excludeCategoryId && availableCategories.length > 1) {
+    availableCategories = availableCategories.filter(id => id !== excludeCategoryId);
+  }
   if (availableCategories.length === 0) {
     return categoryIds[0] || '';
   }
-  
   return availableCategories[Math.floor(Math.random() * availableCategories.length)];
+};
+
+/** Pick a category different from excludeCategoryId when possible. Uses all categories if selected pool would be empty. */
+export const selectDifferentCategory = (
+  categoryIds: string[],
+  categories: Category[],
+  excludeCategoryId: string
+): string => {
+  const valid = (id: string) => {
+    const cat = categories.find(c => c.id === id);
+    return cat && (!cat.locked || cat.isCustom) && cat.words.length > 0;
+  };
+  let pool = categoryIds.filter(valid).filter(id => id !== excludeCategoryId);
+  if (pool.length === 0) {
+    pool = categories
+      .filter(c => (!c.locked || c.isCustom) && c.words.length > 0)
+      .map(c => c.id)
+      .filter(id => id !== excludeCategoryId);
+  }
+  if (pool.length === 0) return excludeCategoryId;
+  return pool[Math.floor(Math.random() * pool.length)];
 };
 
 // Select a random single category when none are selected

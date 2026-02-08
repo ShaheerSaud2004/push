@@ -23,9 +23,9 @@ export default function QuizAnswersReviewScreen() {
   const { colors } = useTheme();
   const { players, settings } = useGame();
 
-  const handleReveal = () => {
+  const handleProceedToTimer = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    navigation.navigate('Reveal');
+    navigation.navigate('VotingTimer');
   };
 
   if (!settings || players.length === 0) {
@@ -139,8 +139,8 @@ export default function QuizAnswersReviewScreen() {
           <Animated.View entering={FadeIn.delay(500)} style={styles.buttonContainer}>
             <View style={styles.buttonWrapper}>
               <Button
-                title="Reveal When Ready ✨"
-                onPress={handleReveal}
+                title="Proceed to Timer →"
+                onPress={handleProceedToTimer}
                 style={styles.button}
                 textStyle={styles.buttonText}
               />

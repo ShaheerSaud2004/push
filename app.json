@@ -2,7 +2,7 @@
   "expo": {
     "name": "Khafī",
     "slug": "khafi",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "newArchEnabled": true,
     "orientation": "portrait",
     "icon": "./appicon.png",
@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FEFBF8"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.khafi.app",
-      "buildNumber": "4",
+      "buildNumber": "6",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }

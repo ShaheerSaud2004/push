@@ -85,6 +85,14 @@ const STEPS = [
         text: 'Vote in person (not in the app) for who you think is the imposter.',
         example: 'Raise hands, point, or discuss until you agree on who to vote out.',
       },
+      {
+        text: 'Tap "Proceed to Timer" to start the discussion timer. The time is based on your group size.',
+        example: 'More players = more time. Tap "+30 sec" if you need extra time to discuss.',
+      },
+      {
+        text: 'When you\'re ready to reveal, tap "Reveal When Ready" to see the results.',
+        example: null,
+      },
     ],
   },
   {
@@ -101,7 +109,7 @@ const STEPS = [
         example: null,
       },
       {
-        text: 'Tap "Play Again" to start a new round with a new word, or "New Game" to change settings.',
+        text: 'Tap "Play Again" for a new round (new word, new imposter, new category). Tap "New Game" to change players or settings.',
         example: null,
       },
     ],

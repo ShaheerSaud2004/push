@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
 import { Easing, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -12,6 +13,7 @@ import SettingsScreen from './screens/SettingsScreen';
 import GameSetupScreen from './screens/GameSetupScreen';
 import PassAndPlayScreen from './screens/PassAndPlayScreen';
 import RoundInstructionsScreen from './screens/RoundInstructionsScreen';
+import VotingTimerScreen from './screens/VotingTimerScreen';
 import QuizAnswerScreen from './screens/QuizAnswerScreen';
 import QuizAnswersReviewScreen from './screens/QuizAnswersReviewScreen';
 import RevealScreen from './screens/RevealScreen';
@@ -27,6 +29,7 @@ export type RootStackParamList = {
   GameConfirmation: undefined;
   PassAndPlay: undefined;
   RoundInstructions: undefined;
+  VotingTimer: undefined;
   QuizAnswer: undefined;
   QuizAnswersReview: undefined;
   Reveal: undefined;
@@ -42,9 +45,15 @@ function AppContent() {
   // 'dark' theme uses light content, others use dark content
   const statusBarStyle = theme === 'dark' ? 'light' : 'dark';
 
+  const onNavigationReady = () => {
+    if (Platform.OS !== 'web') {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  };
+
   return (
     <>
-      <NavigationContainer>
+      <NavigationContainer onReady={onNavigationReady}>
         <Stack.Navigator
           screenOptions={{
             headerShown: false,
@@ -112,6 +121,7 @@ function AppContent() {
             name="RoundInstructions"
             component={RoundInstructionsScreen}
           />
+          <Stack.Screen name="VotingTimer" component={VotingTimerScreen} />
           <Stack.Screen name="QuizAnswer" component={QuizAnswerScreen} />
           <Stack.Screen name="QuizAnswersReview" component={QuizAnswersReviewScreen} />
           <Stack.Screen name="Reveal" component={RevealScreen} />

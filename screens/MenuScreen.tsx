@@ -109,22 +109,27 @@ export default function MenuScreen() {
           </Animated.View>
         </Animated.View>
 
-        <Animated.View
-          entering={FadeInDown.delay(600).springify()}
-          style={styles.buttonContainer}
-        >
-          <Button
-            title="Get Started"
-            onPress={() => navigation.navigate('GameSetup')}
-            style={styles.button}
-          />
-          <Button
-            title="How to Play"
-            onPress={() => navigation.navigate('HowToPlay')}
-            variant="secondary"
-            style={styles.button}
-          />
-        </Animated.View>
+        <View style={styles.buttonContainer}>
+          <View style={{ opacity: 1 }}>
+            <Animated.View entering={FadeInDown.delay(300).springify()}>
+              <Button
+                title="Get Started"
+                onPress={() => navigation.navigate('GameSetup')}
+                style={styles.button}
+              />
+            </Animated.View>
+          </View>
+          <View style={{ opacity: 1 }}>
+            <Animated.View entering={FadeInDown.delay(400).springify()}>
+              <Button
+                title="How to Play"
+                onPress={() => navigation.navigate('HowToPlay')}
+                variant="secondary"
+                style={styles.button}
+              />
+            </Animated.View>
+          </View>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -210,6 +215,7 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     gap: spacing.md,
+    minHeight: 120, // Ensure container has height even if buttons don't render
   },
   button: {
     width: '100%',

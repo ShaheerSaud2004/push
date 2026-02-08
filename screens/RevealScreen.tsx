@@ -33,9 +33,9 @@ import { useGame } from '../contexts/GameContext';
 import { PatternBackground } from '../components/PatternBackground';
 import { typography, spacing } from '../theme';
 import * as Haptics from 'expo-haptics';
-import { getCategoryName, selectRandomWord, selectRandomCategory } from '../utils/game';
+import { getCategoryName, createPlayers, selectRandomWord, selectDifferentCategory, selectImposterQuizQuestion } from '../utils/game';
 import { defaultCategories } from '../data/categories';
-import { getCustomCategories, getUsedWords, addUsedWord, saveGameResult, GameResult } from '../utils/storage';
+import { getCustomCategories, getUsedWords, addUsedWord, clearUsedWords, getSessionUsedQuestionIds, addSessionUsedQuestionId, clearSessionUsedQuestionIds, saveGameResult, GameResult } from '../utils/storage';
 import { getEnglishTranslation } from '../utils/translations';
 import { GameSettings } from '../types';
 import { getMaxContentWidth } from '../utils/responsive';
@@ -48,7 +48,7 @@ type RevealScreenNavigationProp = StackNavigationProp<
 export default function RevealScreen() {
   const navigation = useNavigation<RevealScreenNavigationProp>();
   const { colors } = useTheme();
-  const { players, settings, resetGame, setPlayers, setSettings } = useGame();
+  const { players, settings, setPlayers, setSettings } = useGame();
   const maxWidth = getMaxContentWidth();
   const [customCategories, setCustomCategories] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -163,68 +163,105 @@ export default function RevealScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     try {
-      // Get all available categories
       const allCategories = [...defaultCategories, ...customCategories];
-      
-      // Select a new category from the same selected categories
-      const newCategoryId = selectRandomCategory(
-        settings.selectedCategories,
-        allCategories
+      const newCategoryId = selectDifferentCategory(
+        settings.selectedCategories.length > 0 ? settings.selectedCategories : allCategories.map(c => c.id),
+        allCategories,
+        settings.secretCategory
       );
-      
-      // Get the chosen category
       const chosenCategory = allCategories.find(c => c.id === newCategoryId);
       
-      if (!chosenCategory || chosenCategory.words.length === 0) {
-        // Fallback: navigate to setup if category issue
+      if (!chosenCategory) {
         console.log('No valid category found, navigating to GameSetup');
         navigation.navigate('GameSetup');
         return;
       }
 
-      // Get used words and select a new word
-      const usedWords = await getUsedWords();
-      const newSecretWord = selectRandomWord(chosenCategory.words, usedWords);
-      
-      // Mark new word as used
-      await addUsedWord(newSecretWord);
+      let newSecretWord: string;
+      let newQuizQuestion: string | undefined;
+      let newImposterQuizQuestion: string | undefined;
 
-      // Reset all players' hasSeenCard status
-      const resetPlayers = players.map(p => ({
-        ...p,
-        hasSeenCard: false,
-      }));
+      if (settings.mode === 'quiz') {
+        const { getRandomQuizQuestion } = require('../data/quizQuestions');
+        const usedQuestionIds = getSessionUsedQuestionIds();
+        const difficulty = settings.difficulty === 'all' ? undefined : (settings.difficulty as 'easy' | 'medium' | 'hard');
+        const normalQuestion = getRandomQuizQuestion(newCategoryId, difficulty, usedQuestionIds);
+        if (!normalQuestion) {
+          console.log('No unused quiz questions for this category, navigating to GameSetup');
+          navigation.navigate('GameSetup');
+          return;
+        }
+        addSessionUsedQuestionId(normalQuestion.id);
+        newSecretWord = normalQuestion.answer;
+        newQuizQuestion = normalQuestion.question;
+        const imposterQ = selectImposterQuizQuestion(
+          newCategoryId,
+          normalQuestion.id,
+          difficulty,
+          normalQuestion.answer,
+          normalQuestion.question
+        );
+        newImposterQuizQuestion = imposterQ?.question ?? newQuizQuestion;
+        await addUsedWord(newSecretWord);
+      } else {
+        if (chosenCategory.words.length === 0) {
+          navigation.navigate('GameSetup');
+          return;
+        }
+        const usedWords = await getUsedWords();
+        newSecretWord = selectRandomWord(chosenCategory.words, usedWords);
+        await addUsedWord(newSecretWord);
+      }
 
-      // Update settings with new word and category
+      // Re-randomize imposter(s) and starting player every Play Again (different people when possible)
+      const playerNamesOrdered = settings.playerNames?.length === settings.numPlayers
+        ? settings.playerNames
+        : Array.from({ length: settings.numPlayers }, (_, i) => {
+            const p = players.find(pl => pl.id === `player-${i}`);
+            return p?.name ?? `Player ${i + 1}`;
+          });
+      const randomStartIndex = Math.floor(Math.random() * settings.numPlayers);
+      const newStartingPlayerId = `player-${randomStartIndex}`;
+      const previousImposterIds = players.filter(p => p.role === 'imposter').map(p => p.id);
+      const newPlayers = createPlayers(
+        settings.numPlayers,
+        settings.numImposters,
+        settings.specialModes.doubleAgent,
+        newStartingPlayerId,
+        playerNamesOrdered,
+        previousImposterIds
+      );
+
       const newSettings: GameSettings = {
         ...settings,
+        startingPlayerId: newStartingPlayerId,
         secretWord: newSecretWord,
         secretCategory: newCategoryId,
+        quizQuestion: newQuizQuestion,
+        imposterQuizQuestion: newImposterQuizQuestion,
+        playerNames: playerNamesOrdered,
       };
 
-      // Update game state
-      setPlayers(resetPlayers);
+      setPlayers(newPlayers);
       setSettings(newSettings);
-
-      // Navigate back to PassAndPlay
+      // Defer navigation so context updates before PassAndPlay reads players
       console.log('Navigating to PassAndPlay');
-      navigation.navigate('PassAndPlay');
+      setTimeout(() => navigation.navigate('PassAndPlay'), 0);
     } catch (error) {
       console.error('Error in Play Again:', error);
-      // Fallback: navigate to setup on error
       navigation.navigate('GameSetup');
     }
   };
 
-  const handleNewGame = () => {
+  const handleNewGame = async () => {
     console.log('New Game button pressed');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    // Reset game state
-    resetGame();
+    // Clear used words and session-used questions so new game doesn't repeat
+    await clearUsedWords();
+    clearSessionUsedQuestionIds();
     
-    // Use CommonActions.reset to clear stack and navigate to GameSetup
-    // This ensures a smooth forward animation like Play Again
+    // Don't reset game state - keep players/settings so GameSetup can pre-fill
     console.log('Navigating to GameSetup');
     navigation.dispatch(
       CommonActions.reset({

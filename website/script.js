@@ -138,11 +138,6 @@ const categoryData = {
         description: 'Important concepts and surahs from the Quran.',
         words: ['Surah Al-Fatiha', 'Surah Al-Baqarah', 'Surah Al-Ikhlas', 'Surah Yasin', 'Ayatul Kursi', 'Paradise (Jannah)', 'Hellfire (Jahannam)', 'Angels', 'Jinn', 'Day of Judgment', 'Resurrection', 'Qiyamah', 'Akhirah', 'Dunya', 'Tawheed', 'Shirk', 'Kufr']
     },
-    'family': {
-        name: 'Family & Relationships',
-        description: 'Terms related to family and relationships in Islam.',
-        words: ['Father', 'Mother', 'Brother', 'Sister', 'Son', 'Daughter', 'Husband', 'Wife', 'Uncle', 'Aunt', 'Grandfather', 'Grandmother', 'Cousin', 'Family', 'Parents', 'Children', 'Marriage', 'Nikah']
-    },
     'marriage': {
         name: 'Marriage & Nikah',
         description: 'Terms and concepts related to Islamic marriage.',

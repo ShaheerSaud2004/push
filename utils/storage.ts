@@ -126,6 +126,21 @@ export const clearUsedWords = async (): Promise<void> => {
   }
 };
 
+// Session-only: used quiz question IDs (cleared on New Game so we don't repeat in same session)
+let sessionUsedQuestionIds: string[] = [];
+
+export const getSessionUsedQuestionIds = (): string[] => [...sessionUsedQuestionIds];
+
+export const addSessionUsedQuestionId = (id: string): void => {
+  if (!sessionUsedQuestionIds.includes(id)) {
+    sessionUsedQuestionIds.push(id);
+  }
+};
+
+export const clearSessionUsedQuestionIds = (): void => {
+  sessionUsedQuestionIds = [];
+};
+
 // Game results tracking
 export interface GameResult {
   word: string;
